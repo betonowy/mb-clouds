@@ -1,0 +1,7 @@
+NewShader: shader
+
+    vertexStage: shader.vert.spv
+    vertexStageEntry: main
+
+    fragmentStage: shader.frag.spv
+    fragmentStageEntry: main

@@ -19,7 +19,13 @@ namespace mb {
 
         ~init();
 
-        static void littleLoop();
+        void littleLoop();
+
+        static init *GetInstance();
+
+        VkPhysicalDevice &GetPhysicalDevice();
+
+        VkDevice &GetLogicalDevice();
 
     private:
 
@@ -47,9 +53,27 @@ namespace mb {
 
         bool _initSwapchainImageViews();
 
+        bool _initRenderPass();
+
+        bool _initGraphicsPipeline();
+
+        bool _initFramebuffer();
+
+        bool _initCommandPool();
+
+        bool _initCommandBuffers();
+
+        void _initSyncObjects();
+
         void _initDeviceQueue();
 
+        bool _initImGui();
+
+        void _quitImGui();
+
         void _quitEverything();
+
+        void _drawFrame();
 
         static VKAPI_ATTR VkBool32 VKAPI_CALL
         _debugCallback(VkDebugReportFlagsEXT flags, [[maybe_unused]] VkDebugReportObjectTypeEXT objType,
@@ -70,6 +94,7 @@ namespace mb {
         static constexpr VkFormat _vulcanPreferredFormat = VK_FORMAT_B8G8R8A8_SRGB;
         static constexpr VkColorSpaceKHR _vulcanPreferredColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
         static constexpr VkImageUsageFlags _vulcanImageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        static constexpr int _vulcanMaxFramesInFlight = 3;
 
         static const std::set<std::string> &_requestedLayers();
 
@@ -77,10 +102,13 @@ namespace mb {
 
         static const std::vector<VkImageUsageFlags> &_requestedImageUsages();
 
+        // static
+
+        inline static init *_currentInitInstance = nullptr;
+
         // variables
 
         SDL_Window *_mainWindow{};
-
         std::vector<std::string> _vulcanExtensions;
         std::vector<std::string> _vulcanLayers;
         unsigned _apiVersion{};
@@ -90,10 +118,26 @@ namespace mb {
         VkDevice _vulkanLogicalDevice{};
         VkSurfaceKHR _vulkanPresentationSurface{};
         VkSwapchainKHR _vulkanSwapchain{};
+        VkExtent2D _vulkanSwapchainExtent{};
+        VkPipelineLayout _vulkanPipelineLayout{};
+        VkRenderPass _vulkanRenderPass{};
+        VkPipeline _vulkanGraphicsPipeline{};
+        VkCommandPool _vulkanCommandPool{};
+        std::vector<VkCommandBuffer> _vulkanCommandBuffers;
+        std::vector<VkFramebuffer> _vulkanSwapchainFramebuffers;
         VkFormat _vulkanSwapImagesFormat{};
         std::vector<VkImage> _vulkanChainImages;
         std::vector<VkImageView> _vulkanChainViews;
         VkQueue _vulkanGraphicsQueue{};
+
+        size_t _vulkanCurrentFrame = 0;
+
+        // synchronisation
+
+        std::vector<VkSemaphore> _vulkanImageAvailableSemaphores;
+        std::vector<VkSemaphore> _vulkanRenderFinishedSemaphores;
+        std::vector<VkFence> _vulkanInFlightFences;
+        std::vector<VkFence> _vulkanImagesInFlight;
     };
 }
 

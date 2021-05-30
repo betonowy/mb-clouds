@@ -4,6 +4,6 @@
 
 int main() {
     mb::init instance;
-    mb::init::littleLoop();
+    instance.littleLoop();
     return 0;
 }
