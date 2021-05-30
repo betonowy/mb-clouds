@@ -31,3 +31,25 @@ target_include_directories(
         mb_clouds PUBLIC
         src
 )
+
+if (${CMAKE_BUILD_TYPE} MATCHES Debug)
+
+    message("Debug build, won't strip anything from executable nor export a package")
+
+elseif (${CMAKE_BUILD_TYPE} MATCHES Release)
+
+    message("Release, will strip executable for minimum size with available tools (upx, strip, sstrip)")
+
+    ADD_CUSTOM_COMMAND(
+            TARGET mb_clouds POST_BUILD
+            COMMAND ${CMAKE_SOURCE_DIR}/strip.sh
+    )
+
+    #    message("Release, will export package to output/")
+    #
+    #    ADD_CUSTOM_COMMAND(
+    #            TARGET mb_clouds POST_BUILD
+    #            COMMAND ${CMAKE_SOURCE_DIR}/package.sh
+    #    )
+
+endif ()
