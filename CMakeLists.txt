@@ -6,7 +6,7 @@ find_package(Vulkan REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -pipe -Wall -Wextra -Wpedantic -DDEBUG_BUILD")
-set(CMAKE_CXX_FLAGS_RELEASE "-s -Ofast -ffast-math -fno-exceptions -pipe -Wall -Wextra -Wpedantic")
+set(CMAKE_CXX_FLAGS_RELEASE "-s -Os -ffast-math -fno-exceptions -pipe -Wall -Wextra -Wpedantic")
 
 file(GLOB_RECURSE SRCS src/*.cpp)
 file(GLOB_RECURSE HDRS src/*.h)
@@ -20,10 +20,7 @@ if (WIN32)
 
     target_link_libraries(
             mb_clouds
-            SDL2::SDL2
-            Vulkan::Vulkan
-            local_imgui
-            imm32
+            combined
     )
 endif ()
 
