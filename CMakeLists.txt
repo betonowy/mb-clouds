@@ -4,9 +4,9 @@ project(mb_clouds)
 find_package(SDL2 REQUIRED)
 find_package(Vulkan REQUIRED)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -pipe -Wall -Wextra -Wpedantic -DDEBUG_BUILD")
-set(CMAKE_CXX_FLAGS_RELEASE "-s -Os -ffast-math -fno-exceptions -pipe -Wall -Wextra -Wpedantic")
+set(CMAKE_CXX_FLAGS_RELEASE "-s -Os -ffast-math -pipe -Wall -Wextra -Wpedantic")
 
 file(GLOB_RECURSE SRCS src/*.cpp)
 file(GLOB_RECURSE HDRS src/*.h)
@@ -27,6 +27,7 @@ endif ()
 target_include_directories(
         mb_clouds PUBLIC
         src
+        thirdparty/imgui
 )
 
 if (${CMAKE_BUILD_TYPE} MATCHES Debug)

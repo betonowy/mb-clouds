@@ -5,8 +5,11 @@
 #ifndef MB_CLOUDS_SHADER_H
 #define MB_CLOUDS_SHADER_H
 
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+
 #include <util/staticStorage.h>
-#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan.hpp>
 
 namespace mb {
     class shader : public staticStorage<shader> {
@@ -15,10 +18,10 @@ namespace mb {
 
         virtual ~shader();
 
-        VkShaderModule &GetShaderModule();
+        vk::ShaderModule & GetShaderModule();
 
     private:
-        VkShaderModule _vulcanShaderModule{};
+        vk::ShaderModule _vulcanShaderModule{};
     };
 
 }

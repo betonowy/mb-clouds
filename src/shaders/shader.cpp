@@ -10,20 +10,21 @@
 mb::shader::shader(const std::string &path) {
     auto file = binaryFile(path.c_str());
 
-    VkShaderModuleCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = file.size();
-    createInfo.pCode = reinterpret_cast<const uint32_t *>(file.data());
+    vk::ShaderModuleCreateInfo createInfo{
+            .sType = vk::StructureType::eShaderModuleCreateInfo,
+            .codeSize = file.size(),
+            .pCode = reinterpret_cast<const uint32_t *>(file.data())
+    };
 
     auto init = init::GetInstance();
 
-    if (VK_SUCCESS != vkCreateShaderModule(init->GetLogicalDevice(), &createInfo, nullptr, &_vulcanShaderModule))
+    if (vk::Result::eSuccess != init->GetLogicalDevice().createShaderModule(&createInfo, nullptr, &_vulcanShaderModule))
         misc::exception("failed to create shader module");
 }
 
 mb::shader::~shader() {
     auto init = init::GetInstance();
-    vkDestroyShaderModule(init->GetLogicalDevice(), _vulcanShaderModule, nullptr);
+    init->GetLogicalDevice().destroyShaderModule(_vulcanShaderModule, nullptr);
 }
 
-VkShaderModule & mb::shader::GetShaderModule() { return _vulcanShaderModule; }
+vk::ShaderModule &mb::shader::GetShaderModule() { return _vulcanShaderModule; }
