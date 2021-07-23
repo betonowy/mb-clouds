@@ -1,4 +1,3 @@
-
 find_package(GTest REQUIRED)
 
 add_executable(mb_clouds_gtest test.cpp)
