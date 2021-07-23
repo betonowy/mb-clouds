@@ -5,17 +5,11 @@
 #ifndef MB_CLOUDS_MISC_H
 #define MB_CLOUDS_MISC_H
 
-#ifdef DEBUG_BUILD
-
 #include <exception>
 #include <string>
 
-#endif
-
 namespace mb::misc {
-    void exception(const char *reason);
-
-#ifdef DEBUG_BUILD
+    [[noreturn]] void exception(const char *reason);
 
     class exceptionType : std::exception {
     public:
@@ -26,10 +20,6 @@ namespace mb::misc {
 
         std::string reason;
     };
-
-#endif
-
 }
-
 
 #endif //MB_CLOUDS_MISC_H
