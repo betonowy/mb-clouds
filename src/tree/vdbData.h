@@ -45,11 +45,11 @@ class vdbAccessor {
         for (int i = 0; i < dimType::length(); i++) {
             auto &n = pos[i];
 
-            if constexpr(h) {
+            if constexpr(bool(h)) {
                 n &= pattern(0, h);
             }
 
-            if constexpr(l) {
+            if constexpr(bool(l)) {
                 n >>= l;
             }
         }
@@ -58,6 +58,8 @@ class vdbAccessor {
     }
 
 public:
+    vdbAccessor() = default;
+
     explicit vdbAccessor(dimType pos) :
             rootPos(_reduceDim<rootL, rootH>(pos)),
             nodePos(_reduceDim<nodeL, nodeH>(pos)),
@@ -73,10 +75,10 @@ public:
         return pos;
     }
 
-    const dimType rootPos{};
-    const dimType nodePos{};
-    const dimType leafPos{};
-    const dimType voxelPos{};
+    dimType rootPos{};
+    dimType nodePos{};
+    dimType leafPos{};
+    dimType voxelPos{};
 };
 
 template<typename valueType, int level>
@@ -88,9 +90,6 @@ public:
     struct dataStruct {
         std::bitset<ARRAY_SIZE> bitset;
         std::array<valueType, ARRAY_SIZE> values;
-        uint32_t flag = 0;
-
-        void refresh() { flag = bitset.any(); }
     };
 
     vdbLeaf(dimType lowDim, dimType highDim)
@@ -98,8 +97,7 @@ public:
 
     [[nodiscard]] size_t countOnValues() const { return _data.bitset.count(); };
 
-    const dataStruct &getData() {
-        _data.refresh();
+    [[nodiscard]] const dataStruct &getData() const {
         return _data;
     }
 
@@ -108,6 +106,14 @@ public:
     [[nodiscard]] dimType getHighDim() const { return _highDim; }
 
     [[nodiscard]] dimType getSize() const { return _highDim - _lowDim; }
+
+    [[nodiscard]] size_t getActiveVoxelsCount() const {
+        size_t sum{};
+        for (size_t i = 0; i < ARRAY_SIZE; ++i) {
+            sum += _data.bitset[i] == true;
+        }
+        return sum;
+    };
 
     inline static constexpr size_t getLevel() { return level; }
 
@@ -162,7 +168,7 @@ static_assert(vdbLeaf<float, 3>::ARRAY_SIZE == 512);
 static_assert(sizeof(vdbLeaf<float, 3>::dataStruct::bitset) == 512 / 8);
 static_assert(sizeof(vdbLeaf<float, 3>::dataStruct::values) == 512 * sizeof(float));
 
-template<int level>
+template<typename valueType, int level>
 class vdbNode {
 public:
     static constexpr size_t DIM_SIZE = 1 << level;
@@ -171,9 +177,6 @@ public:
     struct dataStruct {
         std::bitset<ARRAY_SIZE> bitset;
         std::array<size_t, ARRAY_SIZE> pointer;
-        uint32_t flag = 0;
-
-        void refresh() { flag = bitset.any(); }
     };
 
     vdbNode(dimType lowDim, dimType highDim)
@@ -222,23 +225,60 @@ public:
         return index;
     }
 
+    void setBackgroundValue(const valueType &value) { backgroundValue = value; }
+
+    const valueType &getBackgroundValue() const { return backgroundValue; }
+
+    const dataStruct &getData() const { return _data; }
+
+    [[nodiscard]] std::vector<size_t> getIndices() const {
+        std::vector<size_t> indices;
+
+        for (size_t i = 0; i < ARRAY_SIZE; i++) {
+            if (_data.bitset[i]) {
+                indices.push_back(_data.pointer[i]);
+            }
+        }
+
+        return indices;
+    }
+
+    void pokeIndices(const std::vector<size_t> &newIndices) {
+        auto iter = newIndices.begin();
+
+        for (size_t i = 0; i < ARRAY_SIZE; i++) {
+            if (_data.bitset[i]) {
+                assert(iter != newIndices.end());
+                _data.pointer[i] = *iter;
+                ++iter;
+            }
+        }
+
+        assert(iter == newIndices.end());
+    }
+
 private:
     dataStruct _data;
 
     dimType _lowDim;
     dimType _highDim;
+
+    valueType backgroundValue{};
 };
 
 template<typename valueType, int rootLevel, int nodeLevel, int leafLevel>
 class vdbDataset {
 public:
-    using leafType = vdbLeaf<float, leafLevel>;
-    using nodeType = vdbNode<nodeLevel>;
-    using rootType = vdbNode<rootLevel>;
+    using leafType = vdbLeaf<valueType, leafLevel>;
+    using nodeType = vdbNode<valueType, nodeLevel>;
+    using rootType = vdbNode<valueType, rootLevel>;
+
+    static constexpr int topLevel = rootLevel + nodeLevel + leafLevel;
+
     using accessorType = vdbAccessor<rootLevel, nodeLevel, leafLevel>;
 
     void setValue(dimType pos, const valueType &value) {
-        auto accessor = accessorType(pos);
+        accessorType accessor(pos);
 
         size_t rootIndex = _findRoot(accessor.rootPos);
 
@@ -267,7 +307,7 @@ public:
         leaves[leafIndex].setValue(accessor.voxelPos, value);
     }
 
-    valueType getValue(dimType pos) {
+    valueType getValue(dimType pos) const {
         accessorType accessor(pos);
 
         size_t rootIndex = _findRoot(accessor.rootPos);
@@ -276,18 +316,17 @@ public:
 
         size_t nodeIndex = _findNode(accessor.nodePos, rootIndex);
 
-        if (nodeIndex == vdbBadIndex) return backgroundValue;
+        if (nodeIndex == vdbBadIndex) return roots[rootIndex].getBackgroundValue();
 
         size_t leafIndex = _findLeaf(accessor.leafPos, nodeIndex);
 
-        if (leafIndex == vdbBadIndex) return backgroundValue;
+        if (leafIndex == vdbBadIndex) return nodes[rootIndex].getBackgroundValue();
 
         return leaves[leafIndex].getValue(accessor.voxelPos);
     }
 
 private:
-
-    size_t _findRoot(dimType pos) {
+    [[nodiscard]] size_t _findRoot(dimType pos) const {
         for (size_t i = 0; i < roots.size(); i++) {
             auto rootPos = roots[i].getLowDim();
 
@@ -305,7 +344,7 @@ private:
         return roots.size() - 1;
     }
 
-    size_t _findNode(dimType pos, size_t index) {
+    [[nodiscard]] size_t _findNode(dimType pos, size_t index) const {
         assert(index < roots.size());
 
         const auto &root = roots[index];
@@ -325,7 +364,7 @@ private:
         return newIndex;
     }
 
-    size_t _findLeaf(dimType pos, size_t index) {
+    [[nodiscard]] size_t _findLeaf(dimType pos, size_t index) const {
         assert(index < nodes.size());
 
         const auto &node = nodes[index];
@@ -343,6 +382,129 @@ private:
         nodes[index].setIndex(pos, newIndex);
 
         return newIndex;
+    }
+
+public:
+    [[nodiscard]] size_t countRoots() const {
+        return roots.size();
+    }
+
+    [[nodiscard]] size_t countNodes() const {
+        return nodes.size();
+    }
+
+    [[nodiscard]] size_t countLeaves() const {
+        return leaves.size();
+    }
+
+    [[nodiscard]] size_t countVoxels() const {
+        return leaves.size() * leafType::ARRAY_SIZE;
+    }
+
+    [[nodiscard]] size_t countActiveVoxels() const {
+        size_t sum{};
+        for (auto &leaf : leaves) {
+            sum += leaf.getActiveVoxelsCount();
+        }
+        return sum;
+    }
+
+    [[nodiscard]] size_t countMemorySize() const {
+        size_t memSize{};
+
+        memSize += sizeof(*this);
+
+        memSize += roots.size() * sizeof(rootType);
+        memSize += nodes.size() * sizeof(nodeType);
+        memSize += leaves.size() * sizeof(leafType);
+
+        return memSize;
+    }
+
+    [[nodiscard]] dimType getLowDim() const {
+        dimType dim = roots.front().getLowDim();
+
+        for (auto &root : roots) {
+            for (int i = 0; i < dimType::length(); i++) {
+                dim[i] = std::min(dim[i], root.getLowDim()[i]);
+            }
+        }
+
+        return dim * (1 << topLevel);
+    }
+
+    [[nodiscard]] dimType getHighDim() const {
+        dimType dim = roots.front().getHighDim();
+
+        for (auto &root : roots) {
+            for (int i = 0; i < dimType::length(); i++) {
+                dim[i] = std::max(dim[i], root.getHighDim()[i]);
+            }
+        }
+
+        return dim * (1 << topLevel);
+    }
+
+    const auto &getRoots() const { return roots; }
+
+    const auto &getNodes() const { return nodes; }
+
+    const auto &getLeaves() const { return leaves; }
+
+    void reorganizeData() {
+        _reorganizeNodes();
+        _reorganizeLeaves();
+
+        roots.shrink_to_fit();
+        nodes.shrink_to_fit();
+        leaves.shrink_to_fit();
+    }
+
+private:
+    void _reorganizeNodes() {
+        std::vector<nodeType> newNodes;
+
+        size_t index{};
+
+        for (auto &root : roots) {
+            std::vector<size_t> indices = root.getIndices();
+            std::vector<size_t> newIndices(indices.size());
+
+            for (auto &i : indices) {
+                newNodes.push_back(nodes[i]);
+            }
+
+            for (auto &i : newIndices) {
+                i = index++;
+            }
+
+            root.pokeIndices(newIndices);
+        }
+
+        nodes = newNodes;
+    }
+
+    void _reorganizeLeaves() {
+        std::vector<leafType> newLeaves;
+
+        size_t index{};
+
+        for (auto &node : nodes) {
+            std::vector<size_t> indices = node.getIndices();
+            std::vector<size_t> newIndices(indices.size());
+
+            for (auto &i : indices) {
+                newLeaves.push_back(leaves[i]);
+            }
+
+            for (auto &i : newIndices) {
+                i = index++;
+            }
+
+            node.pokeIndices(newIndices);
+        }
+
+        leaves = newLeaves;
     }
 
     std::vector<leafType> leaves;

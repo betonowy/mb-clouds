@@ -6,6 +6,12 @@
 #define MB_CLOUDS_VDBDATATEST_H
 
 #include <tree/vdbData.h>
+#include <filePaths.h>
+
+#include <openvdb/openvdb.h>
+
+#include <random>
+#include <chrono>
 
 TEST(vdbData, vdbLeaf) {
     using vdbLeafType = vdbLeaf<float, 3>;
@@ -31,11 +37,11 @@ TEST(vdbData, vdbLeaf) {
 
     auto vdbData = leaf.getData();
 
-    ASSERT_TRUE(vdbData.flag);
+    ASSERT_TRUE(vdbData.bitset.any());
 }
 
 TEST(vdbData, vdbNode) {
-    using vdbNodeType = vdbNode<4>;
+    using vdbNodeType = vdbNode<float, 4>;
 
     vdbNodeType node({10, 10, 10}, {26, 26, 26});
 
@@ -63,6 +69,7 @@ TEST(vdbData, vdbNode) {
 
 TEST(vdbData, vdbAccessorTest) {
     using accType = vdbAccessor<5, 4, 3>;
+
     {
         dimType pos = {0, 0, 0};
 
@@ -133,26 +140,25 @@ TEST(vdbData, vdbAccessorTest) {
 
         ASSERT_EQ(pos, returnPos);
     }
-
 }
 
-TEST(vdbData, vdbDatasetRootTest) {
+TEST(vdbData, vdbDatasetHierarchyTest) {
     vdbDataset<float, 5, 4, 3> dataset;
 
     constexpr size_t ARRAY_SIZE = 8;
 
-    glm::ivec3 positions[ARRAY_SIZE] {
+    glm::ivec3 positions[ARRAY_SIZE]{
             {-6144, -4096, -2049},
-            {-2048, 0, 2047},
-            {2048, 4096, 6143},
-            {6144, 8192, 10239},
-            {1, 0, 1},
-            {0, 2, 3},
-            {4, 8, 3},
-            {0, 9, 4},
+            {-2048, 0,     2047},
+            {2048,  4096,  6143},
+            {6144,  8192,  10239},
+            {1,     0,     1},
+            {0,     2,     3},
+            {4,     8,     3},
+            {0,     9,     4},
     };
 
-    float values[ARRAY_SIZE] {1, 2, 3, 4, 5, 6, 7, 8};
+    float values[ARRAY_SIZE]{1, 2, 3, 4, 5, 6, 7, 8};
 
     for (size_t i = 0; i < ARRAY_SIZE; i++) {
         dataset.setValue(positions[i], values[i]);
@@ -163,5 +169,174 @@ TEST(vdbData, vdbDatasetRootTest) {
     }
 }
 
+TEST(vdbData, vdbDatasetFillTest) {
+    using clock = std::chrono::steady_clock;
+
+    auto toMillis = [](const auto &timePoint) -> float {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(timePoint).count();
+    };
+
+    vdbDataset<float, 5, 4, 3> dataset;
+
+    std::vector<std::pair<dimType, float>> testData;
+
+    constexpr dimType lowDim{-64, -64, -64};
+    constexpr dimType highDim{256, 64, 64};
+    constexpr size_t finalRoots = 8;
+    constexpr size_t finalNodes = 12;
+    constexpr size_t finalLeaves = 10240;
+    constexpr size_t finalVoxels = 5242880;
+
+    testData.reserve(finalVoxels);
+
+    std::random_device rd;
+
+    std::ranlux24_base re(rd());
+
+    std::uniform_real_distribution<float> ud(0, 1);
+
+    auto genT1 = clock::now();
+
+    for (int x = lowDim.x; x < highDim.x; x++) {
+        for (int y = lowDim.y; y < highDim.y; y++) {
+            for (int z = lowDim.z; z < highDim.z; z++) {
+                testData.emplace_back(dimType(x, y, z), ud(re));
+            }
+        }
+    }
+
+    auto readData = testData;
+
+    std::shuffle(testData.begin(), testData.end(), re);
+
+    auto genT2 = clock::now();
+    auto fillT1 = genT2;
+
+    for (auto &[pos, val] : testData) {
+        dataset.setValue(pos, val);
+    }
+
+    auto fillT2 = clock::now();
+    auto reorgT1 = fillT2;
+
+    dataset.reorganizeData();
+
+    auto reorgT2 = clock::now();
+    auto getT1 = reorgT2;
+
+    for (auto &[pos, val] : readData) {
+        ASSERT_EQ(dataset.getValue(pos), val);
+    }
+
+    auto getT2 = clock::now();
+
+    ASSERT_EQ(dataset.countRoots(), finalRoots);
+    ASSERT_EQ(dataset.countNodes(), finalNodes);
+    ASSERT_EQ(dataset.countLeaves(), finalLeaves);
+    ASSERT_EQ(dataset.countVoxels(), finalVoxels);
+
+    constexpr size_t kiB = 1 << 10;
+    constexpr size_t miB = 1 << 20;
+
+    const auto memSize = dataset.countMemorySize();
+
+    constexpr size_t w = 9;
+
+    std::cout << "vdb fill stress test:\n"
+              << "gen time: " << std::setw(w) << toMillis(genT2 - genT1) << " ms\n"
+              << "fill time:" << std::setw(w) << toMillis(fillT2 - fillT1) << " ms\n"
+              << "re time:  " << std::setw(w) << toMillis(reorgT2 - reorgT1) << " ms\n"
+              << "get time: " << std::setw(w) << toMillis(getT2 - getT1) << " ms\n"
+              << "roots:    " << std::setw(w) << dataset.countRoots() << "\n"
+              << "nodes:    " << std::setw(w) << dataset.countNodes() << "\n"
+              << "leaves:   " << std::setw(w) << dataset.countLeaves() << "\n"
+              << "voxels:   " << std::setw(w) << dataset.countVoxels() << "\n"
+              << "memory footprint:\n"
+              << std::setw(w) << memSize << " B\n"
+              << std::setw(w) << memSize / kiB << " kiB\n"
+              << std::setw(w) << memSize / miB << " miB\n";
+}
+
+TEST(vdbData, vdbDatasetRealDataStressTest) {
+    using clock = std::chrono::steady_clock;
+
+    auto toMillis = [](const auto &timePoint) -> float {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(timePoint).count();
+    };
+
+    vdbDataset<float, 5, 4, 3> dataset;
+
+    openvdb::initialize();
+
+    openvdb::io::File testFile("../" + std::string(filePaths::VDB_CLOUD_LD));
+
+    testFile.open(false);
+
+    auto baseGrid = testFile.readGrid("density");
+
+    openvdb::FloatGrid::Ptr grid = openvdb::gridPtrCast<openvdb::FloatGrid>(baseGrid);
+
+    auto valueIter = grid->beginValueOn();
+
+    std::vector<std::pair<dimType, float>> cloudVals;
+
+    while (valueIter) {
+        dimType pos;
+        float value;
+
+        valueIter.getCoord().asXYZ(pos.x, pos.y, pos.z);
+        value = valueIter.getValue();
+
+        dataset.setValue(pos, value);
+        cloudVals.emplace_back(pos, value);
+
+        ++valueIter;
+    }
+
+    dataset.reorganizeData();
+
+    std::cout << "openvdb mem usage: " << grid->memUsage() << "\n"
+              << "my data mem usage: " << dataset.countMemorySize() << "\n";
+
+    auto time = clock::now();
+
+    for (auto &[pos, value] : cloudVals) {
+        grid->getAccessor().getValue({pos.x, pos.y, pos.z});
+    }
+
+    auto vdbIterTime = clock::now() - time;
+
+    time = clock::now();
+
+    for (auto &[pos, value] : cloudVals) {
+        dataset.getValue({pos.x, pos.y, pos.z});
+    }
+
+    auto datasetIterTime = clock::now() - time;
+
+    auto memSize = dataset.countMemorySize();
+
+    constexpr size_t w = 9;
+    constexpr size_t kiB = 1 << 10;
+    constexpr size_t miB = 1 << 20;
+
+    std::cout << "vdb iteration time:\n"
+              << "openvdb time :" << std::setw(w) << toMillis(vdbIterTime) << " ms\n"
+              << "roots:    " << std::setw(w) << grid->tree().nodeCount()[2] << "\n"
+              << "nodes:    " << std::setw(w) << grid->tree().nodeCount()[1] << "\n"
+              << "leaves:   " << std::setw(w) << grid->tree().nodeCount()[0] << "\n"
+              << "voxels:   " << std::setw(w) << grid->tree().activeVoxelCount() << "\n"
+              << "my data time :" << std::setw(w) << toMillis(datasetIterTime) << " ms\n"
+              << "roots:    " << std::setw(w) << dataset.countRoots() << "\n"
+              << "nodes:    " << std::setw(w) << dataset.countNodes() << "\n"
+              << "leaves:   " << std::setw(w) << dataset.countLeaves() << "\n"
+              << "voxels:   " << std::setw(w) << dataset.countActiveVoxels() << "\n"
+              << "memory footprint:\n"
+              << std::setw(w) << memSize << " B\n"
+              << std::setw(w) << memSize / kiB << " KiB\n"
+              << std::setw(w) << memSize / miB << " MiB\n";
+
+    testFile.close();
+}
 
 #endif //MB_CLOUDS_VDBDATATEST_H

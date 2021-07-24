@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include "tests/vdbDataTest.h"
+#include "tests/vdbDataExtractTest.h"
 
 int main(int argc, char *argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
