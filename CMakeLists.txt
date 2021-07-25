@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.12)
 project(mb_clouds)
 
     set(CMAKE_CXX_STANDARD 20)
-    set(CMAKE_CXX_FLAGS_DEBUG "-g -pipe -Wall -Wextra -Wpedantic -DDEBUG_BUILD")
-    set(CMAKE_CXX_FLAGS_RELEASE "-s -Os -ffast-math -pipe -Wall -Wextra -Wpedantic")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -pipe -Wall -Wextra -Wpedantic")
+    set(CMAKE_CXX_FLAGS_RELEASE "-s -O3 -ffast-math -pipe -Wall -Wextra -Wpedantic -DNDEBUG")
 
     add_subdirectory(thirdparty)
     add_subdirectory(src)

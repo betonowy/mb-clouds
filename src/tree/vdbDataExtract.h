@@ -8,6 +8,8 @@
 #include "vdbData.h"
 
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 template<typename valueType, int rootLevel, int nodeLevel, int leafLevel>
 class vdbGl {
@@ -138,7 +140,7 @@ public:
 
     size_t getNodesSize() { return sizeof(NodeDescription) * _nodes.size(); }
 
-    RootDescription *getLeavesPtr() { return _leaves.data(); }
+    LeafDescription *getLeavesPtr() { return _leaves.data(); }
 
     size_t getLeavesSize() { return sizeof(LeafDescription) * _leaves.size(); }
 

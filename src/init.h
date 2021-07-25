@@ -9,6 +9,11 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <memory>
+#include <shaders/sceneData.h>
+#include <ui/uiFunctions.h>
+
+class vdbClouds;
 
 namespace mb {
     class init {
@@ -45,6 +50,14 @@ namespace mb {
 
         void _windowTitleFps();
 
+        void _updateSceneData();
+
+        void _userInterface();
+
+        void _render();
+
+        void _processEvents();
+
         // constants
 
         static constexpr const char *_appWindowName = "Clouds";
@@ -55,16 +68,27 @@ namespace mb {
 
         inline static init *_currentInitInstance = nullptr;
 
-        // variables
+        // sdl variables
 
         SDL_Window *_mainWindow{};
         SDL_GLContext _glContext{};
+
+        // variables
+
+        sceneData _sceneData;
+        applicationData _appData;
 
         // synchronisation
 
         // ImGui
 
         ImGuiIO* _imGuiIO{};
+
+        uiFunctions _uiFunctions;
+
+        // vdbClouds
+
+        std::unique_ptr<vdbClouds> _vdbClouds;
     };
 }
 

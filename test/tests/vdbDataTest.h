@@ -6,7 +6,7 @@
 #define MB_CLOUDS_VDBDATATEST_H
 
 #include <tree/vdbData.h>
-#include <filePaths.h>
+#include <config.h>
 
 #include <openvdb/openvdb.h>
 

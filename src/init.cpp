@@ -2,27 +2,63 @@
 // Created by pekopeko on 20.05.2021.
 //
 
-#include <iostream>
-#include <glm/glm.hpp>
+#include "init.h"
+
+#include <util/misc.h>
+#include <clouds/vdbClouds.h>
+
 #include <imgui.h>
 #include <backends/imgui_impl_sdl.h>
-#include <util/misc.h>
-#include <util/file/binaryFile.h>
-#include "init.h"
-#include <sstream>
-#include <openvdb/openvdb.h>
-#include <filePaths.h>
+#include <ui/uiFunctions.h>
 
-//#include "tree/vdbTree.h"
+#include <iostream>
 
-mb::init::init() {
+void MessageCallback([[maybe_unused]] GLenum source, GLenum type,
+                     [[maybe_unused]] GLuint id, [[maybe_unused]] GLenum severity,
+                     [[maybe_unused]] GLsizei length,
+                     const GLchar *message, [[maybe_unused]] const void *userParam) {
+    std::string info(message);
+    std::string openglPrefix = "OpenGL";
+
+    switch (type) {
+        case GL_DEBUG_TYPE_ERROR:
+            std::cout << openglPrefix + " Error: " + info;
+            break;
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+            std::cout << openglPrefix + " Deprecated: " + info;
+            break;
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+            std::cout << openglPrefix + " Undefined Behavior: " + info;
+            break;
+        case GL_DEBUG_TYPE_PERFORMANCE:
+            std::cout << openglPrefix + " Performance: " + info;
+            break;
+        case GL_DEBUG_TYPE_PORTABILITY:
+            std::cout << openglPrefix + " Portability: " + info;
+            break;
+        case GL_DEBUG_TYPE_MARKER:
+            std::cout << openglPrefix + " Marker: " + info;
+            break;
+        case GL_DEBUG_TYPE_PUSH_GROUP:
+            std::cout << openglPrefix + " Push Group: " + info;
+            break;
+        case GL_DEBUG_TYPE_POP_GROUP:
+            std::cout << openglPrefix + " PoP Group: " + info;
+            break;
+        default:
+            std::cout << openglPrefix + ": " + info;
+            break;
+    }
+    std::cout << std::endl;
+}
+
+mb::init::init() : _uiFunctions(&_sceneData, &_appData) {
     if (_currentInitInstance) {
         misc::exception("Cannot invoke more than one init instance");
     }
+
     _currentInitInstance = this;
     _initEverything();
-
-
 }
 
 mb::init::~init() {
@@ -31,15 +67,23 @@ mb::init::~init() {
 }
 
 void mb::init::_initEverything() {
+    std::cout << "Init everything start\n";
+
     _initSdl();
     _initImGui();
-    openvdb::initialize();
+
+    _vdbClouds = std::make_unique<vdbClouds>(filePaths::VDB_CLOUD_LD);
+
+    std::cout << "Init everything done\n";
 }
 
 void mb::init::_quitEverything() {
-    openvdb::uninitialize();
+    std::cout << "Quit everything start\n";
+
     _quitImGui();
     _quitSdl();
+
+    std::cout << "Quit everything done\n";
 }
 
 void mb::init::_initSdl() {
@@ -61,6 +105,16 @@ void mb::init::_initSdl() {
     SDL_GL_SetSwapInterval(0);
 
     glewInit();
+
+#ifndef NDEBUG
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(MessageCallback, nullptr);
+#endif
+
+    std::cout << "   GL_VENDOR: " << glGetString(GL_VENDOR) << "\n"
+              << " GL_RENDERER: " << glGetString(GL_RENDERER) << "\n"
+              << "  GL_VERSION: " << glGetString(GL_VERSION) << "\n"
+              << "GLSL_VERSION: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << "\n";
 }
 
 void mb::init::_quitSdl() {
@@ -89,33 +143,21 @@ void mb::init::_quitImGui() {
 mb::init *mb::init::GetInstance() { return _currentInitInstance; }
 
 void mb::init::littleLoop() {
-    bool run = true;
-
-    openvdb::io::File cloudFile(filePaths::VDB_CLOUD_LD);
-
-    cloudFile.open(false);
-
-    while (run) {
+    while (_appData.isRunning) {
         _beginFrame();
-
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT) {
-                run = false;
-            }
-        }
-
-        ImGui::ShowDemoWindow();
-
+        _processEvents();
+        _userInterface();
+        _updateSceneData();
+        _render();
         _endFrame();
         _windowTitleFps();
     }
-
-    cloudFile.close();
 }
 
 void mb::init::_beginFrame() {
+    glClearColor(0.1, 0.2, 0.4, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(_mainWindow);
     ImGui::NewFrame();
@@ -123,9 +165,9 @@ void mb::init::_beginFrame() {
 
 void mb::init::_endFrame() {
     ImGui::Render();
+
     glViewport(0, 0, (GLsizei) _imGuiIO->DisplaySize.x, (GLsizei) _imGuiIO->DisplaySize.y);
-    glClearColor(0.1, 0.2, 0.4, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
+
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(_mainWindow);
 }
@@ -139,14 +181,39 @@ void mb::init::_windowTitleFps() {
     frameCount++;
 
     if (t2 - t1 >= 1000) {
-        int fps = int(round(float(frameCount) / float(t2 - t1) * 1000));
-
-        std::stringstream ss;
-        ss << _appWindowName << " FPS: " << fps;
-
-        SDL_SetWindowTitle(_mainWindow, ss.str().c_str());
+        _appData.currentFps = round(float(frameCount) / float(t2 - t1) * 100000) / 100;
 
         t1 = t2;
         frameCount = 0;
+    }
+}
+
+void mb::init::_updateSceneData() {
+    {
+        int x, y;
+        SDL_GetWindowSize(_mainWindow, &x, &y);
+
+        _sceneData.aspectRatio = float(y) / float(x);
+    }
+
+    _sceneData.update();
+}
+
+void mb::init::_userInterface() {
+    _uiFunctions.doUi();
+}
+
+void mb::init::_render() {
+    _vdbClouds->render();
+}
+
+void mb::init::_processEvents() {
+    SDL_Event event;
+
+    while (SDL_PollEvent(&event)) {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+        if (event.type == SDL_QUIT) {
+            _appData.isRunning = false;
+        }
     }
 }
