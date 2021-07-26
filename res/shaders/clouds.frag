@@ -34,6 +34,59 @@ layout(std430, binding = 0) buffer VdbDesc {
     uint leafCount;
 } s_VdbDesc;
 
+
+
+struct VdbRoot {
+    ivec3 lowDimBB;
+    uint index;
+
+    ivec3 highDimBB;
+    uint _padding_1;
+
+    uint bitsets[1024];
+    uint indices[32768];
+};
+
+layout(std430, binding = 1) buffer VdbRoots {
+    VdbRoot root[];
+} s_VdbRoots;
+
+
+
+struct VdbNode {
+    ivec3 lowDimBB;
+    uint index;
+
+    ivec3 highDimBB;
+    uint _padding_1;
+
+    uint bitsets[128];
+    uint indices[4096];
+};
+
+
+
+layout(std430, binding = 2) buffer VdbNodes {
+    VdbNode node[];
+} s_VdbNodes;
+
+
+
+struct VdbLeaf {
+    ivec3 lowDimBB;
+    uint index;
+
+    ivec3 highDimBB;
+    uint _padding_1;
+
+    uint bitsets[16];
+    float values[512];
+};
+
+layout(std430, binding = 3) buffer VdbLeaves {
+    VdbLeaf leaf[];
+} s_VdbLeaves;
+
 // end of vdb shader storage buffer objects
 
 // input/output data
@@ -132,9 +185,13 @@ void RayAdvance(inout vec3 ro, in vec3 rd, in float dist) {
 void main() {
     vec3 ro, rd;
 
+    ro.y += s_VdbDesc.rootCount;
+
     getStartingRay(ro, rd);
 
-    ro.y += s_VdbDesc.rootCount;
+    ro.y += s_VdbRoots.root[0].index;
+    ro.y += s_VdbNodes.node[0].index;
+    ro.y += s_VdbLeaves.leaf[0].index;
 
     vec3 debugColor = RayTraceDistToCol(ro, rd);
 

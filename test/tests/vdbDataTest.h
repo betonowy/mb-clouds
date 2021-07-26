@@ -145,7 +145,7 @@ TEST(vdbData, vdbAccessorTest) {
 TEST(vdbData, vdbDatasetHierarchyTest) {
     vdbDataset<float, 5, 4, 3> dataset;
 
-    constexpr size_t ARRAY_SIZE = 8;
+    constexpr uint32_t ARRAY_SIZE = 8;
 
     glm::ivec3 positions[ARRAY_SIZE]{
             {-6144, -4096, -2049},
@@ -160,11 +160,11 @@ TEST(vdbData, vdbDatasetHierarchyTest) {
 
     float values[ARRAY_SIZE]{1, 2, 3, 4, 5, 6, 7, 8};
 
-    for (size_t i = 0; i < ARRAY_SIZE; i++) {
+    for (uint32_t i = 0; i < ARRAY_SIZE; i++) {
         dataset.setValue(positions[i], values[i]);
     }
 
-    for (size_t i = 0; i < ARRAY_SIZE; i++) {
+    for (uint32_t i = 0; i < ARRAY_SIZE; i++) {
         ASSERT_EQ(dataset.getValue(positions[i]), values[i]);
     }
 }
@@ -182,10 +182,10 @@ TEST(vdbData, vdbDatasetFillTest) {
 
     constexpr dimType lowDim{-64, -64, -64};
     constexpr dimType highDim{256, 64, 64};
-    constexpr size_t finalRoots = 8;
-    constexpr size_t finalNodes = 12;
-    constexpr size_t finalLeaves = 10240;
-    constexpr size_t finalVoxels = 5242880;
+    constexpr uint32_t finalRoots = 8;
+    constexpr uint32_t finalNodes = 12;
+    constexpr uint32_t finalLeaves = 10240;
+    constexpr uint32_t finalVoxels = 5242880;
 
     testData.reserve(finalVoxels);
 
@@ -235,12 +235,12 @@ TEST(vdbData, vdbDatasetFillTest) {
     ASSERT_EQ(dataset.countLeaves(), finalLeaves);
     ASSERT_EQ(dataset.countVoxels(), finalVoxels);
 
-    constexpr size_t kiB = 1 << 10;
-    constexpr size_t miB = 1 << 20;
+    constexpr uint32_t kiB = 1 << 10;
+    constexpr uint32_t miB = 1 << 20;
 
     const auto memSize = dataset.countMemorySize();
 
-    constexpr size_t w = 9;
+    constexpr uint32_t w = 9;
 
     std::cout << "vdb fill stress test:\n"
               << "gen time: " << std::setw(w) << toMillis(genT2 - genT1) << " ms\n"
@@ -316,9 +316,9 @@ TEST(vdbData, vdbDatasetRealDataStressTest) {
 
     auto memSize = dataset.countMemorySize();
 
-    constexpr size_t w = 9;
-    constexpr size_t kiB = 1 << 10;
-    constexpr size_t miB = 1 << 20;
+    constexpr uint32_t w = 9;
+    constexpr uint32_t kiB = 1 << 10;
+    constexpr uint32_t miB = 1 << 20;
 
     std::cout << "vdb iteration time:\n"
               << "openvdb time :" << std::setw(w) << toMillis(vdbIterTime) << " ms\n"

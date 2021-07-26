@@ -14,11 +14,11 @@
 #include <unordered_set>
 
 using dimType = glm::ivec3;
-static constexpr size_t vdbBadIndex = std::numeric_limits<size_t>::max();
+static constexpr uint32_t vdbBadIndex = std::numeric_limits<uint32_t>::max();
 
 template<int rootLevel, int nodeLevel, int leafLevel>
 class vdbAccessor {
-    static constexpr size_t ones = std::numeric_limits<size_t>::max();
+    static constexpr uint32_t ones = std::numeric_limits<uint32_t>::max();
 
     static constexpr int voxelL = 0;
     static constexpr int leafL = leafLevel;
@@ -33,7 +33,7 @@ class vdbAccessor {
     template<int l, int h>
     dimType _reduceDim(dimType pos) {
         constexpr auto pattern = [](int a, int b) {
-            size_t p{};
+            uint32_t p{};
 
             for (int i = a; i < b; i++) {
                 p |= 1 << i;
@@ -84,7 +84,7 @@ public:
 template<typename valueType, int level>
 class vdbLeaf {
 public:
-    static constexpr size_t ARRAY_SIZE = 1 << (level * 3);
+    static constexpr uint32_t ARRAY_SIZE = 1 << (level * 3);
     static constexpr int dimSize = 1 << level;
 
     struct dataStruct {
@@ -95,7 +95,7 @@ public:
     vdbLeaf(dimType lowDim, dimType highDim)
             : _lowDim(lowDim), _highDim(highDim) {}
 
-    [[nodiscard]] size_t countOnValues() const { return _data.bitset.count(); };
+    [[nodiscard]] uint32_t countOnValues() const { return _data.bitset.count(); };
 
     [[nodiscard]] const dataStruct &getData() const {
         return _data;
@@ -107,22 +107,22 @@ public:
 
     [[nodiscard]] dimType getSize() const { return _highDim - _lowDim; }
 
-    [[nodiscard]] size_t getActiveVoxelsCount() const {
-        size_t sum{};
-        for (size_t i = 0; i < ARRAY_SIZE; ++i) {
+    [[nodiscard]] uint32_t getActiveVoxelsCount() const {
+        uint32_t sum{};
+        for (uint32_t i = 0; i < ARRAY_SIZE; ++i) {
             sum += _data.bitset[i] == true;
         }
         return sum;
     };
 
-    inline static constexpr size_t getLevel() { return level; }
+    inline static constexpr uint32_t getLevel() { return level; }
 
     void setValue(dimType pos, const valueType &value) {
         assert(pos[0] >= 0 && pos[0] < dimSize);
         assert(pos[1] >= 0 && pos[1] < dimSize);
         assert(pos[2] >= 0 && pos[2] < dimSize);
 
-        size_t index = pos[0] | pos[1] << level | pos[2] << level * 2;
+        uint32_t index = pos[0] | pos[1] << level | pos[2] << level * 2;
 
         assert(index < ARRAY_SIZE);
 
@@ -135,7 +135,7 @@ public:
         assert(pos[1] >= 0 && pos[1] < dimSize);
         assert(pos[2] >= 0 && pos[2] < dimSize);
 
-        size_t index = pos[0] | pos[1] << level | pos[2] << level * 2;
+        uint32_t index = pos[0] | pos[1] << level | pos[2] << level * 2;
 
         assert(index < ARRAY_SIZE);
 
@@ -147,7 +147,7 @@ public:
         assert(pos[1] >= 0 && pos[1] < dimSize);
         assert(pos[2] >= 0 && pos[2] < dimSize);
 
-        size_t index = pos[0] | pos[1] << level | pos[2] << level * 2;
+        uint32_t index = pos[0] | pos[1] << level | pos[2] << level * 2;
 
         assert(index < ARRAY_SIZE);
         assert(_data.bitset[index]);
@@ -171,12 +171,12 @@ static_assert(sizeof(vdbLeaf<float, 3>::dataStruct::values) == 512 * sizeof(floa
 template<typename valueType, int level>
 class vdbNode {
 public:
-    static constexpr size_t DIM_SIZE = 1 << level;
-    static constexpr size_t ARRAY_SIZE = 1 << (level * 3);
+    static constexpr uint32_t DIM_SIZE = 1 << level;
+    static constexpr uint32_t ARRAY_SIZE = 1 << (level * 3);
 
     struct dataStruct {
         std::bitset<ARRAY_SIZE> bitset;
-        std::array<size_t, ARRAY_SIZE> pointer;
+        std::array<uint32_t, ARRAY_SIZE> pointer;
     };
 
     vdbNode(dimType lowDim, dimType highDim)
@@ -188,8 +188,8 @@ public:
 
     [[nodiscard]] dimType getSize() const { return _highDim - _lowDim; }
 
-    void setIndex(dimType pos, size_t index) {
-        size_t internalIndex = calculateIndex(pos);
+    void setIndex(dimType pos, uint32_t index) {
+        uint32_t internalIndex = calculateIndex(pos);
 
         assert(internalIndex != vdbBadIndex);
 
@@ -197,8 +197,8 @@ public:
         _data.pointer[internalIndex] = index;
     }
 
-    [[nodiscard]] std::optional<size_t> getIndex(dimType pos) const {
-        size_t internalIndex = calculateIndex(pos);
+    [[nodiscard]] std::optional<uint32_t> getIndex(dimType pos) const {
+        uint32_t internalIndex = calculateIndex(pos);
 
         assert(internalIndex != vdbBadIndex);
 
@@ -209,14 +209,14 @@ public:
         return std::nullopt;
     }
 
-    [[nodiscard]] size_t calculateIndex(dimType pos) const {
+    [[nodiscard]] uint32_t calculateIndex(dimType pos) const {
         for (int i = 0; i < dimType::length(); i++) {
             if (pos[i] < 0 || pos[i] >= (1 << level)) {
                 return vdbBadIndex;
             }
         }
 
-        size_t index{};
+        uint32_t index{};
 
         for (int i = 0; i < dimType::length(); i++) {
             index += pos[i] << (level * i);
@@ -231,10 +231,10 @@ public:
 
     const dataStruct &getData() const { return _data; }
 
-    [[nodiscard]] std::vector<size_t> getIndices() const {
-        std::vector<size_t> indices;
+    [[nodiscard]] std::vector<uint32_t> getIndices() const {
+        std::vector<uint32_t> indices;
 
-        for (size_t i = 0; i < ARRAY_SIZE; i++) {
+        for (uint32_t i = 0; i < ARRAY_SIZE; i++) {
             if (_data.bitset[i]) {
                 indices.push_back(_data.pointer[i]);
             }
@@ -243,10 +243,10 @@ public:
         return indices;
     }
 
-    void pokeIndices(const std::vector<size_t> &newIndices) {
+    void pokeIndices(const std::vector<uint32_t> &newIndices) {
         auto iter = newIndices.begin();
 
-        for (size_t i = 0; i < ARRAY_SIZE; i++) {
+        for (uint32_t i = 0; i < ARRAY_SIZE; i++) {
             if (_data.bitset[i]) {
                 assert(iter != newIndices.end());
                 _data.pointer[i] = *iter;
@@ -280,7 +280,7 @@ public:
     void setValue(dimType pos, const valueType &value) {
         accessorType accessor(pos);
 
-        size_t rootIndex = _findRoot(accessor.rootPos);
+        uint32_t rootIndex = _findRoot(accessor.rootPos);
 
         if (rootIndex == vdbBadIndex) {
             rootIndex = _createRoot(accessor.rootPos);
@@ -288,7 +288,7 @@ public:
 
         assert(rootIndex != vdbBadIndex);
 
-        size_t nodeIndex = _findNode(accessor.nodePos, rootIndex);
+        uint32_t nodeIndex = _findNode(accessor.nodePos, rootIndex);
 
         if (nodeIndex == vdbBadIndex) {
             nodeIndex = _createNode(accessor.nodePos, rootIndex);
@@ -296,7 +296,7 @@ public:
 
         assert(nodeIndex != vdbBadIndex);
 
-        size_t leafIndex = _findLeaf(accessor.leafPos, nodeIndex);
+        uint32_t leafIndex = _findLeaf(accessor.leafPos, nodeIndex);
 
         if (leafIndex == vdbBadIndex) {
             leafIndex = _createLeaf(accessor.leafPos, nodeIndex);
@@ -310,15 +310,15 @@ public:
     valueType getValue(dimType pos) const {
         accessorType accessor(pos);
 
-        size_t rootIndex = _findRoot(accessor.rootPos);
+        uint32_t rootIndex = _findRoot(accessor.rootPos);
 
         if (rootIndex == vdbBadIndex) return backgroundValue;
 
-        size_t nodeIndex = _findNode(accessor.nodePos, rootIndex);
+        uint32_t nodeIndex = _findNode(accessor.nodePos, rootIndex);
 
         if (nodeIndex == vdbBadIndex) return roots[rootIndex].getBackgroundValue();
 
-        size_t leafIndex = _findLeaf(accessor.leafPos, nodeIndex);
+        uint32_t leafIndex = _findLeaf(accessor.leafPos, nodeIndex);
 
         if (leafIndex == vdbBadIndex) return nodes[rootIndex].getBackgroundValue();
 
@@ -326,8 +326,8 @@ public:
     }
 
 private:
-    [[nodiscard]] size_t _findRoot(dimType pos) const {
-        for (size_t i = 0; i < roots.size(); i++) {
+    [[nodiscard]] uint32_t _findRoot(dimType pos) const {
+        for (uint32_t i = 0; i < roots.size(); i++) {
             auto rootPos = roots[i].getLowDim();
 
             if (rootPos == pos) {
@@ -338,13 +338,13 @@ private:
         return vdbBadIndex;
     }
 
-    size_t _createRoot(dimType pos) {
+    uint32_t _createRoot(dimType pos) {
         roots.emplace_back(pos, pos + 1);
 
         return roots.size() - 1;
     }
 
-    [[nodiscard]] size_t _findNode(dimType pos, size_t index) const {
+    [[nodiscard]] uint32_t _findNode(dimType pos, uint32_t index) const {
         assert(index < roots.size());
 
         const auto &root = roots[index];
@@ -354,17 +354,17 @@ private:
         return optIndex ? *optIndex : vdbBadIndex;
     }
 
-    size_t _createNode(dimType pos, size_t index) {
+    uint32_t _createNode(dimType pos, uint32_t index) {
         nodes.emplace_back(pos, pos + 1);
 
-        size_t newIndex = nodes.size() - 1;
+        uint32_t newIndex = nodes.size() - 1;
 
         roots[index].setIndex(pos, newIndex);
 
         return newIndex;
     }
 
-    [[nodiscard]] size_t _findLeaf(dimType pos, size_t index) const {
+    [[nodiscard]] uint32_t _findLeaf(dimType pos, uint32_t index) const {
         assert(index < nodes.size());
 
         const auto &node = nodes[index];
@@ -374,10 +374,10 @@ private:
         return optIndex ? *optIndex : vdbBadIndex;
     }
 
-    size_t _createLeaf(dimType pos, size_t index) {
+    uint32_t _createLeaf(dimType pos, uint32_t index) {
         leaves.emplace_back(pos, pos + 1);
 
-        size_t newIndex = leaves.size() - 1;
+        uint32_t newIndex = leaves.size() - 1;
 
         nodes[index].setIndex(pos, newIndex);
 
@@ -385,32 +385,32 @@ private:
     }
 
 public:
-    [[nodiscard]] size_t countRoots() const {
+    [[nodiscard]] uint32_t countRoots() const {
         return roots.size();
     }
 
-    [[nodiscard]] size_t countNodes() const {
+    [[nodiscard]] uint32_t countNodes() const {
         return nodes.size();
     }
 
-    [[nodiscard]] size_t countLeaves() const {
+    [[nodiscard]] uint32_t countLeaves() const {
         return leaves.size();
     }
 
-    [[nodiscard]] size_t countVoxels() const {
+    [[nodiscard]] uint32_t countVoxels() const {
         return leaves.size() * leafType::ARRAY_SIZE;
     }
 
-    [[nodiscard]] size_t countActiveVoxels() const {
-        size_t sum{};
+    [[nodiscard]] uint32_t countActiveVoxels() const {
+        uint32_t sum{};
         for (auto &leaf : leaves) {
             sum += leaf.getActiveVoxelsCount();
         }
         return sum;
     }
 
-    [[nodiscard]] size_t countMemorySize() const {
-        size_t memSize{};
+    [[nodiscard]] uint32_t countMemorySize() const {
+        uint32_t memSize{};
 
         memSize += sizeof(*this);
 
@@ -464,11 +464,11 @@ private:
     void _reorganizeNodes() {
         std::vector<nodeType> newNodes;
 
-        size_t index{};
+        uint32_t index{};
 
         for (auto &root : roots) {
-            std::vector<size_t> indices = root.getIndices();
-            std::vector<size_t> newIndices(indices.size());
+            std::vector<uint32_t> indices = root.getIndices();
+            std::vector<uint32_t> newIndices(indices.size());
 
             for (auto &i : indices) {
                 newNodes.push_back(nodes[i]);
@@ -487,11 +487,11 @@ private:
     void _reorganizeLeaves() {
         std::vector<leafType> newLeaves;
 
-        size_t index{};
+        uint32_t index{};
 
         for (auto &node : nodes) {
-            std::vector<size_t> indices = node.getIndices();
-            std::vector<size_t> newIndices(indices.size());
+            std::vector<uint32_t> indices = node.getIndices();
+            std::vector<uint32_t> newIndices(indices.size());
 
             for (auto &i : indices) {
                 newLeaves.push_back(leaves[i]);

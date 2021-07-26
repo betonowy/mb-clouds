@@ -47,15 +47,15 @@ cloudStorage<valueType, rootLevel, nodeLevel, leafLevel>::cloudStorage(cloudStor
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, rootsSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, extract.getRootsSize(), extract.getRootsPtr(), GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindings::vdbDesc, rootsSSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindings::vdbRoots, rootsSSBO);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, nodesSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, extract.getNodesSize(), extract.getNodesPtr(), GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindings::vdbDesc, nodesSSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindings::vdbNodes, nodesSSBO);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, leavesSSBO);
     glBufferData(GL_SHADER_STORAGE_BUFFER, extract.getLeavesSize(), extract.getLeavesPtr(), GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindings::vdbDesc, leavesSSBO);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, bindings::vdbLeaves, leavesSSBO);
 }
 
 template<typename valueType, int rootLevel, int nodeLevel, int leafLevel>

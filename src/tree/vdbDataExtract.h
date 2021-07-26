@@ -26,7 +26,7 @@ public:
 
     struct Description {
         std::string toString() {
-            constexpr size_t w = 10;
+            constexpr uint32_t w = 10;
 
             auto dimToStr = [](dimType dim) {
                 std::stringstream str;
@@ -130,19 +130,19 @@ public:
 
     Description *getDescriptionPtr() { return &_desc; }
 
-    size_t getDescriptionSize() { return sizeof(_desc); }
+    uint32_t getDescriptionSize() { return sizeof(_desc); }
 
     RootDescription *getRootsPtr() { return _roots.data(); }
 
-    size_t getRootsSize() { return sizeof(RootDescription) * _roots.size(); }
+    uint32_t getRootsSize() { return sizeof(RootDescription) * _roots.size(); }
 
     NodeDescription *getNodesPtr() { return _nodes.data(); }
 
-    size_t getNodesSize() { return sizeof(NodeDescription) * _nodes.size(); }
+    uint32_t getNodesSize() { return sizeof(NodeDescription) * _nodes.size(); }
 
     LeafDescription *getLeavesPtr() { return _leaves.data(); }
 
-    size_t getLeavesSize() { return sizeof(LeafDescription) * _leaves.size(); }
+    uint32_t getLeavesSize() { return sizeof(LeafDescription) * _leaves.size(); }
 
 private:
     std::vector<RootDescription> _roots;
