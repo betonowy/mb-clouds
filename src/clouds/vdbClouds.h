@@ -20,6 +20,8 @@ public:
 
     void render();
 
+    void recompileShaders();
+
 private:
     std::string _vdbPath;
 

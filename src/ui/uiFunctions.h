@@ -12,6 +12,23 @@ struct applicationData {
     bool isRunning = true;
     bool showMainMenuBar = true;
     float currentFps{};
+    float currentFrameTime{0.1};
+
+    bool rotateCamera = false;
+    bool moveCamera = false;
+
+    glm::vec3 cameraRotation = {};
+    float cameraRotationSpeed = 1;
+    float cameraMoveSpeed = 4;
+
+    bool wantsRecompileShaders = false;
+
+    bool wKey{};
+    bool sKey{};
+    bool aKey{};
+    bool dKey{};
+    bool qKey{};
+    bool eKey{};
 };
 
 class uiFunctions {

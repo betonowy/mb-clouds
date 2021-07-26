@@ -24,7 +24,15 @@ layout(std140, binding = 4) uniform SceneData {
 
 // vdb shader storage buffer objects
 
+layout(std430, binding = 0) buffer VdbDesc {
+    ivec3 lowDimBB;
+    uint rootCount;
 
+    ivec3 highDimBB;
+    uint nodeCount;
+
+    uint leafCount;
+} s_VdbDesc;
 
 // end of vdb shader storage buffer objects
 
@@ -36,12 +44,13 @@ in vec2 ScreenCoord;
 
 // end of input output data
 
+// begin first bounce handle functions
+
 void getStartingRay(out vec3 ro, out vec3 rd) {
     rd = u_SceneData.camDir;
     ro = u_SceneData.camPos;
 
-    vec3 xPosVec = rd.zyx;
-    xPosVec.z *= -1.0;
+    vec3 xPosVec = normalize(cross(rd, vec3(0, 0, 1)));
 
     vec3 yPosVec = cross(rd, xPosVec) * u_SceneData.camRatio; //* u_SceneData.camRatio;
 
@@ -51,7 +60,7 @@ void getStartingRay(out vec3 ro, out vec3 rd) {
     rd = normalize(rd);
 }
 
-const vec3 C_P = vec3(2, 2, 5); // 0,1,3
+const vec3 C_P = vec3(0, 0, 0); // 0,1,3
 const vec3 C_S = vec3(1, 1, 1); // 8,8,4
 const float AABB_TOL = 0.99999;
 
@@ -99,10 +108,6 @@ float GetDistAABB(vec3 pos, vec3 nor) {
     return -1.0f;
 }
 
-void RayAdvance(inout vec3 ro, in vec3 rd, in float dist) {
-    ro += rd * dist;
-}
-
 vec3 RayTraceDistToCol(vec3 ro, vec3 rd) {
     float dO = GetDistAABB(ro, rd);
     if (dO == 0.0f) return vec3(1.0, 0.0, 0.0);// You're inside
@@ -110,10 +115,26 @@ vec3 RayTraceDistToCol(vec3 ro, vec3 rd) {
     return vec3(0.0, dO, 0.0);
 }
 
+// end first bounce handle functions
+
+// begin misc ray functions
+
+void RayAdvance(inout vec3 ro, in vec3 rd, in float dist) {
+    ro += rd * dist;
+}
+
+// end misc ray functions
+
+// begin ray marching
+
+// end ray marching
+
 void main() {
     vec3 ro, rd;
 
     getStartingRay(ro, rd);
+
+    ro.y += s_VdbDesc.rootCount;
 
     vec3 debugColor = RayTraceDistToCol(ro, rd);
 

@@ -13,9 +13,7 @@ public:
 
     glm::mat4 GetView();
 
-    virtual glm::mat4 GetProjection() = 0;
-
-    void SetCurrentCameraMatrix();
+    virtual glm::mat4 GetProjection();
 
     void SetPosition(const glm::vec3 &pos);
 
@@ -29,11 +27,17 @@ public:
 
     [[nodiscard]] inline float GetFarPlane() const { return zFar; }
 
-    static float GetScreenAspectRatio();
+    void SetFovAndAspectRatio(float fov, float ratio);
 
-    inline static int visibleObjs = 0;
+    void MoveRelative(glm::vec3 vector);
+
+    inline glm::vec3 GetLookDir() { return lookAtVector; }
+
+    inline glm::vec3 GetPosition() { return position; }
+
+    void RotateAbs(glm::vec3 vector);
+
 private:
-
     glm::mat4 viewMatrix = glm::mat4(1.0);
     bool dirtyViewMatrix = true;
 
@@ -41,6 +45,8 @@ private:
     bool dirtyProjectionMatrix = true;
 
     float zNear = 0.1f, zFar = 1000.f;
+    float _fov = 90.0;
+    float _aspectRatio;
 
     glm::mat4 worldTransform = glm::mat4(1.0);
 

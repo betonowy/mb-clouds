@@ -108,3 +108,7 @@ void vdbClouds::render() {
     _cloudStorage->bind();
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
+
+void vdbClouds::recompileShaders() {
+    _resetShaders();
+}

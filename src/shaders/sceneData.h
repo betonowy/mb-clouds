@@ -8,10 +8,10 @@
 #include <glm/glm.hpp>
 
 struct sceneData {
-    glm::vec3 cameraPosition{0, 0, 0};
+    glm::vec3 cameraPosition{};
     float fov{};
 
-    glm::vec3 cameraLookDir{0 , 0, 1};
+    glm::vec3 cameraLookDir{};
     float aspectRatio{};
 
     glm::mat4 viewMatrix{};

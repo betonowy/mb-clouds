@@ -12,6 +12,7 @@
 #include <memory>
 #include <shaders/sceneData.h>
 #include <ui/uiFunctions.h>
+#include <world/camera.h>
 
 class vdbClouds;
 
@@ -58,6 +59,30 @@ namespace mb {
 
         void _processEvents();
 
+        void _cameraHandle();
+
+        // events
+
+        void _scheduledEvents();
+
+        void _leftMouseButtonHandle(bool value);
+
+        void _rightMouseButtonHandle(bool value);
+
+        void _mouseMotionHandle(glm::vec2 mAbs, glm::vec2 mRel, glm::vec2 pAbs, glm::vec2 pRel);
+
+        void _wKeyAction();
+
+        void _sKeyAction();
+
+        void _aKeyAction();
+
+        void _dKeyAction();
+
+        void _qKeyAction();
+
+        void _eKeyAction();
+
         // constants
 
         static constexpr const char *_appWindowName = "Clouds";
@@ -85,6 +110,8 @@ namespace mb {
         ImGuiIO* _imGuiIO{};
 
         uiFunctions _uiFunctions;
+
+        camera _camera;
 
         // vdbClouds
 
