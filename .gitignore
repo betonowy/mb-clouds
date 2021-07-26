@@ -1,3 +1,4 @@
 .idea/
 cmake-build-*/
 res/vdb
+build*/

@@ -33,7 +33,7 @@ void uiFunctions::_uiMainMenuBarFpsCounter() {
 
 void uiFunctions::_uiMainMenuBarFile() {
     if (ImGui::BeginMenu("File")) {
-        if(ImGui::MenuItem("Exit application", "ESC")) {
+        if(ImGui::MenuItem("Exit application", "ALT+F4")) {
             _appData->isRunning = false;
         }
 
