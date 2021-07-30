@@ -43,7 +43,8 @@ void vdbClouds::_initDataset() {
             float value = valueIter.getValue();
             valueIter.getCoord().asXYZ(pos.x, pos.y, pos.z);
 
-            _dataset->setValue(pos, value);
+            // convert between blender/opengl coordinate system
+            _dataset->setValue({-pos.x, pos.z, pos.y}, value);
 
             ++valueIter;
         }

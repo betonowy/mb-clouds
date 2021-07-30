@@ -83,6 +83,8 @@ namespace mb {
 
         void _eKeyAction();
 
+        void _rKeyAction();
+
         // constants
 
         static constexpr const char *_appWindowName = "Clouds";

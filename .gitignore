@@ -2,3 +2,6 @@
 cmake-build-*/
 res/vdb
 build*/
+.cache/
+.vscode/
+compile_commands.json

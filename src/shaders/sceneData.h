@@ -26,6 +26,9 @@ struct sceneData {
     glm::vec3 backgroundColor{};
     float time{};
 
+    float vdbScale = 3;
+    float aabbScale = 1;
+
     void update();
 };
 

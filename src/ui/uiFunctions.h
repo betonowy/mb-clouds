@@ -10,7 +10,10 @@
 
 struct applicationData {
     bool isRunning = true;
+
     bool showMainMenuBar = true;
+    bool showSceneDataWindow = false;
+
     float currentFps{};
     float currentFrameTime{0.1};
 
@@ -29,6 +32,7 @@ struct applicationData {
     bool dKey{};
     bool qKey{};
     bool eKey{};
+    bool rKey{};
 };
 
 class uiFunctions {
@@ -39,11 +43,19 @@ public:
 
 private:
 
+    // main menu bar
+
     void _uiMainMenuBarFile();
+
+    void _uiMainMenuBarWindows();
 
     void _uiMainMenuBarFpsCounter();
 
     void _uiMainMenuBar();
+
+    // windows
+
+    void _uiSceneDataWindow();
 
     sceneData* _sceneDataPtr;
     applicationData* _appData;

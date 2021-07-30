@@ -84,7 +84,7 @@ void mb::init::_initEverything() {
     _initSdl();
     _initImGui();
 
-    _vdbClouds = std::make_unique<vdbClouds>(filePaths::VDB_CLOUD_LD);
+    _vdbClouds = std::make_unique<vdbClouds>(filePaths::VDB_CLOUD_HD);
 
     std::cout << "Init everything done\n";
 }
@@ -158,8 +158,8 @@ void mb::init::littleLoop() {
     while (_appData.isRunning) {
         _beginFrame();
         _processEvents();
-        _userInterface();
         _cameraHandle();
+        _userInterface();
         _scheduledEvents();
         _updateSceneData();
         _render();
@@ -223,6 +223,14 @@ void mb::init::_updateSceneData() {
 
 void mb::init::_userInterface() {
     _uiFunctions.doUi();
+
+    _wKeyAction();
+    _sKeyAction();
+    _aKeyAction();
+    _dKeyAction();
+    _qKeyAction();
+    _eKeyAction();
+    _rKeyAction();
 }
 
 void mb::init::_render() {
@@ -303,6 +311,9 @@ void mb::init::_processEvents() {
                         case SDLK_e:
                             _appData.eKey = value;
                             break;
+                        case SDLK_r:
+                            _appData.rKey = value;
+                            break;
                     }
                     break;
                 }
@@ -341,18 +352,11 @@ void mb::init::_cameraHandle() {
 
     if (vec.z > M_PI) vec.z -= 2 * M_PI;
     else if (vec.z < M_PI) vec.z += 2 * M_PI;
-
-    _wKeyAction();
-    _sKeyAction();
-    _aKeyAction();
-    _dKeyAction();
-    _qKeyAction();
-    _eKeyAction();
 }
 
 void mb::init::_mouseMotionHandle(glm::vec2 mAbs, glm::vec2 mRel, glm::vec2 pAbs, glm::vec2 pRel) {
     if (_appData.rotateCamera) {
-        _appData.cameraRotation += glm::vec3(mRel.x, mRel.y, 0);
+        _appData.cameraRotation += glm::vec3(mRel.x, -mRel.y, 0);
     }
 }
 
@@ -389,6 +393,13 @@ void mb::init::_qKeyAction() {
 void mb::init::_eKeyAction() {
     if (_appData.eKey) {
         _camera.MoveRelative(glm::vec3(0, 0, -1) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
+    }
+}
+
+void mb::init::_rKeyAction() {
+    if (_appData.rKey) {
+        _appData.rKey = false;
+        _appData.wantsRecompileShaders = true;
     }
 }
 
