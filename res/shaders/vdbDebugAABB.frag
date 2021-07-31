@@ -1,12 +1,9 @@
 #version 450 core
 
-// begin samplers
-
 uniform sampler2D blueNoiseSampler;
 
-// end samplers
-
-// scene data uniform buffer objects
+const uint VDB_BAD_INDEX = 0xFFFFFFFF;
+const float AABB_TOL = 0.99999;
 
 layout(std140, binding = 4) uniform SceneData {
     vec3 camPos;
@@ -29,13 +26,13 @@ layout(std140, binding = 4) uniform SceneData {
 
     float vdbScale;
     float aabbScale;
-    float vdbDensityMultiplier;
+    float vdbDensityMultipier;
     float backgroundDensity;
 
     float primaryRayLength;
-    float primaryRayLengthMultiplier;
+    float primaryRayLengthMultipier;
     float secondaryRayLength;
-    float secondaryRayLengthMultiplier;
+    float secondaryRayLengthMultipier;
 
     vec3 aabbPosition;
     float _padding_1;
@@ -52,34 +49,26 @@ layout(std140, binding = 4) uniform SceneData {
     vec4 randomData[8];
 } u_SceneData;
 
-// input/output data
+float getRandomData(in int n) {
+    vec4 packedFloats = u_SceneData.randomData[n >> 2];
+    switch (n & 3) {
+        case 0:
+        return packedFloats.x;
+        case 1:
+        return packedFloats.y;
+        case 2:
+        return packedFloats.z;
+        case 3:
+        return packedFloats.w;
+    }
+    return 0; // Unreachable, it's here just to please GLSL compiler
+}
 
 out vec4 FragColor;
 
 in vec2 ScreenCoord;
 
-// end of input output data
-
-// begin uniform special access
-
-float getRandomData(int n) {
-    vec4 packedFloats = u_SceneData.randomData[n >> 2];
-    switch(n & 3) {
-        case 0:
-            return packedFloats.x;
-        case 1:
-            return packedFloats.y;
-        case 2:
-            return packedFloats.z;
-        case 3:
-            return packedFloats.w;
-    }
-    return 0; // unreachable, just to please compilers
-}
-
-// end uniform special access
-
-// begin color filtering
+// *************************************************** begin post processing
 
 vec3 LinearToHDR(vec3 inColor, float exposure) {
     const float invGamma = 1.0 / 2.2;
@@ -105,9 +94,9 @@ vec4 NoiseShaping() {
     return vec4(SampleBlueNoise(ivec2(gl_FragCoord.xy)).rgb * noiseValue, 0) - offset;
 }
 
-// end color filtering
+// *************************************************** end post processing
 
-// begin first bounce handle functions
+// *************************************************** begin first bounce handle functions
 
 void getStartingRay(out vec3 ro, out vec3 rd) {
     rd = u_SceneData.camDir;
@@ -122,8 +111,6 @@ void getStartingRay(out vec3 ro, out vec3 rd) {
 
     rd = normalize(rd);
 }
-
-const float AABB_TOL = 0.99999;
 
 float GetDistAABB(in vec3 pos, in vec3 nor) {
     const vec3 C_P = u_SceneData.aabbPosition;
@@ -180,17 +167,15 @@ vec3 RayTraceDistToCol(in vec3 ro, in vec3 rd) {
     return vec3(dO / 16, dO / 4, dO);
 }
 
-// end first bounce handle functions
+// *************************************************** end first bounce handle functions
 
 void main() {
     vec3 ro, rd;
-
     getStartingRay(ro, rd);
 
     vec4 color = vec4(RayTraceDistToCol(ro, rd), 1.0);
 
     color.rgb = LinearToHDR(color.rgb, 0.1);
-
     color += NoiseShaping();
 
     FragColor = color;

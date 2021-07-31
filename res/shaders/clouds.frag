@@ -1,18 +1,9 @@
 #version 450 core
 
-// begin samplers
-
 uniform sampler2D blueNoiseSampler;
 
-// end samplers
-
-// begin constants
-
 const uint VDB_BAD_INDEX = 0xFFFFFFFF;
-
-// end constants
-
-// scene data uniform buffer objects
+const float AABB_TOL = 0.99999;
 
 layout(std140, binding = 4) uniform SceneData {
     vec3 camPos;
@@ -58,7 +49,20 @@ layout(std140, binding = 4) uniform SceneData {
     vec4 randomData[8];
 } u_SceneData;
 
-// vdb shader storage buffer objects
+float getRandomData(in int n) {
+    vec4 packedFloats = u_SceneData.randomData[n >> 2];
+    switch (n & 3) {
+        case 0:
+        return packedFloats.x;
+        case 1:
+        return packedFloats.y;
+        case 2:
+        return packedFloats.z;
+        case 3:
+        return packedFloats.w;
+    }
+    return 0; // Unreachable, it's here just to please GLSL compiler
+}
 
 layout(std430, binding = 0) buffer VdbDesc {
     ivec3 lowDimBB;
@@ -69,8 +73,6 @@ layout(std430, binding = 0) buffer VdbDesc {
 
     uint leafCount;
 } s_VdbDesc;
-
-
 
 struct VdbRoot {
     ivec3 lowDimBB;
@@ -87,8 +89,6 @@ layout(std430, binding = 1) buffer VdbRoots {
     VdbRoot root[];
 } s_VdbRoots;
 
-
-
 struct VdbNode {
     ivec3 lowDimBB;
     uint index;
@@ -100,13 +100,9 @@ struct VdbNode {
     uint indices[4096];
 };
 
-
-
 layout(std430, binding = 2) buffer VdbNodes {
     VdbNode node[];
 } s_VdbNodes;
-
-
 
 struct VdbLeaf {
     ivec3 lowDimBB;
@@ -123,38 +119,13 @@ layout(std430, binding = 3) buffer VdbLeaves {
     VdbLeaf leaf[];
 } s_VdbLeaves;
 
-// end of vdb shader storage buffer objects
-
-// input/output data
-
 out vec4 FragColor;
 
 in vec2 ScreenCoord;
 
-// end of input output data
+// *************************************************** begin post processing
 
-// begin uniform special access
-
-float getRandomData(int n) {
-    vec4 packedFloats = u_SceneData.randomData[n >> 2];
-    switch (n & 3) {
-        case 0:
-        return packedFloats.x;
-        case 1:
-        return packedFloats.y;
-        case 2:
-        return packedFloats.z;
-        case 3:
-        return packedFloats.w;
-    }
-    return 0;// unreachable, just to please compilers
-}
-
-// end uniform special access
-
-// begin color filtering
-
-vec3 LinearToHDR(vec3 inColor, float exposure) {
+vec3 LinearToHDR(in vec3 inColor, in float exposure) {
     const float invGamma = 1.0 / 2.2;
 
     vec3 tempCol = inColor;
@@ -165,7 +136,7 @@ vec3 LinearToHDR(vec3 inColor, float exposure) {
     return inColor;
 }
 
-vec4 SampleBlueNoise(ivec2 pixIndex) {
+vec4 SampleBlueNoise(in ivec2 pixIndex) {
     vec2 randomOffset = vec2(getRandomData(0), getRandomData(1)) * 1000;
     pixIndex += ivec2(randomOffset);
     pixIndex %= textureSize(blueNoiseSampler, 0);
@@ -178,11 +149,181 @@ vec4 NoiseShaping() {
     return vec4(SampleBlueNoise(ivec2(gl_FragCoord.xy)).rgb * noiseValue, 0) - offset;
 }
 
-// end color filtering
+// *************************************************** end post processing
 
-// begin first bounce handle functions
+// *************************************************** begin VDB accessor
 
-void getStartingRay(out vec3 ro, out vec3 rd) {
+struct VDB_Accessor {
+    ivec3 rootPos;
+    uint root;
+
+    ivec3 nodePos;
+    uint node;
+
+    ivec3 leafPos;
+    uint leaf;
+
+    ivec3 voxelPos;
+    float voxelValue;
+};
+
+int VDB_Pattern(in int a, in int b) {
+    int p = 0;
+
+    for (int i = a; i < b; i++) {
+        p |= 1 << i;
+    }
+
+    return p;
+}
+
+ivec3 VDB_ReduceDim(in ivec3 pos, in int l, in int h) {
+    if (bool(h)) {
+        pos &= ivec3(VDB_Pattern(0, h));
+    }
+
+    if (bool(l)) {
+        pos >>= ivec3(l);
+    }
+
+    return pos;
+}
+
+uint VDB_PosToIndex(in ivec3 pos, in int level) {
+    return (pos.x) | (pos.y << level) | (pos.z << (level * 2));
+}
+
+void VDB_Bitset32Access(in uint index, out uint dwordIndex, out uint bitIndex) {
+    dwordIndex = index >> 5;
+    bitIndex = index & 31u;
+}
+
+ivec3 _VDB_DescCenter;
+vec3 _VDB_AABB_Center;
+float _VDB_SizeRatioMax;
+
+void _INIT_VDB_WorldToVDB() {
+    const ivec3 VDB_Size = s_VdbDesc.highDimBB - s_VdbDesc.lowDimBB;
+    _VDB_DescCenter = (s_VdbDesc.highDimBB + s_VdbDesc.lowDimBB) / 2;
+
+    const vec3 AABB_Size = u_SceneData.aabbSize;
+    _VDB_AABB_Center = u_SceneData.aabbPosition;
+
+    const vec3 sizeRatio = vec3(VDB_Size) / (AABB_Size * u_SceneData.vdbScale);
+    _VDB_SizeRatioMax = max(max(sizeRatio.x, sizeRatio.y), sizeRatio.z);
+}
+
+ivec3 VDB_WorldToVDB(in vec3 pos) {
+    return ivec3((pos - _VDB_AABB_Center) * _VDB_SizeRatioMax) + _VDB_DescCenter;
+}
+
+ivec3 _VDB_CachedRootPos = ivec3(VDB_BAD_INDEX);
+uint _VDB_CachedRootIndex = VDB_BAD_INDEX;
+ivec3 _VDB_CachedNodePos = ivec3(VDB_BAD_INDEX);
+uint _VDB_CachedNodeIndex = VDB_BAD_INDEX;
+ivec3 _VDB_CachedLeafPos = ivec3(VDB_BAD_INDEX);
+uint _VDB_CachedLeafIndex = VDB_BAD_INDEX;
+uint _VDB_UsableCacheDepth = VDB_BAD_INDEX;
+
+VDB_Accessor VDB_GetAccessor(in vec3 pos) {
+    VDB_Accessor acc;
+
+    acc.root = acc.node = acc.leaf = VDB_BAD_INDEX;
+
+    const ivec3 vdb_pos = VDB_WorldToVDB(pos);
+
+    acc.rootPos =  VDB_ReduceDim(vdb_pos, 12, 0);
+    acc.nodePos =  VDB_ReduceDim(vdb_pos, 7, 12);
+    acc.leafPos =  VDB_ReduceDim(vdb_pos, 3, 7);
+    acc.voxelPos = VDB_ReduceDim(vdb_pos, 0, 3);
+
+    if (acc.rootPos != _VDB_CachedRootPos) { return acc; }
+    acc.root = _VDB_CachedRootIndex;
+
+    if (acc.nodePos != _VDB_CachedNodePos) { return acc; }
+    acc.node = _VDB_CachedNodeIndex;
+
+    if (acc.leafPos != _VDB_CachedLeafPos) { return acc; }
+    acc.leaf = _VDB_CachedLeafIndex;
+
+    return acc;
+}
+
+bool VDB_IsRootHit(in uint index, in VDB_Accessor acc) {
+    return s_VdbRoots.root[index].lowDimBB / 4096 == acc.rootPos;
+}
+
+bool VDB_FindRoot(inout VDB_Accessor acc) {
+    for (uint i = 0; i < s_VdbDesc.rootCount; i++) {
+        if (VDB_IsRootHit(i, acc)) {
+            acc.root = i;
+            _VDB_CachedRootIndex = i;
+            _VDB_CachedRootPos = acc.rootPos;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool VDB_FindNode(inout VDB_Accessor acc) {
+    if (acc.root == VDB_BAD_INDEX && VDB_FindRoot(acc)) { return false; }
+
+    _VDB_CachedNodePos = acc.nodePos;
+    uint index, bit, mainIndex = VDB_PosToIndex(acc.nodePos, 5);
+    VDB_Bitset32Access(mainIndex, index, bit);
+
+    if (!bool(s_VdbRoots.root[acc.root].bitsets[index] & (1 << bit))) { return false; }
+
+    acc.node = s_VdbRoots.root[acc.root].indices[mainIndex];
+    return true;
+}
+
+bool VDB_FindLeaf(inout VDB_Accessor acc) {
+    if (acc.node == VDB_BAD_INDEX && !VDB_FindNode(acc)) { return false; }
+
+    _VDB_CachedLeafPos = acc.leafPos;
+    uint index, bit, mainIndex = VDB_PosToIndex(acc.leafPos, 4);
+    VDB_Bitset32Access(mainIndex, index, bit);
+
+    if (!bool(s_VdbNodes.node[acc.node].bitsets[index] & (1 << bit))) { return false; }
+
+    acc.leaf = s_VdbNodes.node[acc.node].indices[mainIndex];
+    return true;
+}
+
+bool VDB_GetVoxel(inout VDB_Accessor acc) {
+    if (acc.leaf == VDB_BAD_INDEX && !VDB_FindLeaf(acc)) { return false; }
+
+    uint index, bit, mainIndex = VDB_PosToIndex(acc.voxelPos, 3);
+    VDB_Bitset32Access(mainIndex, index, bit);
+
+    if (!bool(s_VdbLeaves.leaf[acc.leaf].bitsets[index] & (1 << bit))) { return false; }
+
+    acc.voxelValue = s_VdbLeaves.leaf[acc.leaf].values[mainIndex];
+    return true;
+}
+
+float _VDB_BackgroundValue;
+float _VDB_VoxelValueMultiplier;
+
+void _INIT_VDB_GetValue() {
+    _VDB_BackgroundValue = u_SceneData.primaryRayLength * u_SceneData.backgroundDensity;
+    _VDB_VoxelValueMultiplier = u_SceneData.primaryRayLength * u_SceneData.vdbDensityMultipier;
+}
+
+float VDB_GetValue(in vec3 pos) {
+    VDB_Accessor acc = VDB_GetAccessor(pos);
+
+    if (!VDB_GetVoxel(acc)) { return _VDB_BackgroundValue; }
+
+    return acc.voxelValue * _VDB_VoxelValueMultiplier;
+}
+
+// *************************************************** end VDB accessor
+
+// *************************************************** begin ray marching primary ray
+
+void GetStartingRay(out vec3 ro, out vec3 rd) {
     rd = u_SceneData.camDir;
     ro = u_SceneData.camPos;
 
@@ -195,8 +336,6 @@ void getStartingRay(out vec3 ro, out vec3 rd) {
 
     rd = normalize(rd);
 }
-
-const float AABB_TOL = 0.99999;
 
 float GetDistAABB(in vec3 pos, in vec3 nor) {
     const vec3 C_P = u_SceneData.aabbPosition;
@@ -245,20 +384,7 @@ float GetDistAABB(in vec3 pos, in vec3 nor) {
     return -1.0f;
 }
 
-vec3 RayTraceDistToCol(in vec3 ro, in vec3 rd) {
-    float dO = GetDistAABB(ro, rd);
-    if (dO == 0.0f) return vec3(1.0, 0.0, 0.0);// You're inside
-    else if (dO < -0.0f) return vec3(1.0, 0.0, 1.0);// no intersection
-    return vec3(0.0, dO, 0.0);
-}
-
-// end first bounce handle functions
-
-// begin misc ray functions
-
-void RayAdvance(inout vec3 ro, in vec3 rd, in float dist) {
-    ro += rd * dist;
-}
+void RayAdvance(inout vec3 ro, in vec3 rd, in float dist) { ro += rd * dist; }
 
 bool InsideAABB(in vec3 pos) {
     const vec3 C_P = u_SceneData.aabbPosition;
@@ -268,195 +394,27 @@ bool InsideAABB(in vec3 pos) {
     return cond == 3;
 }
 
-// end misc ray functions
-
-// begin VDB accessor
-
-struct VDB_Accessor {
-    ivec3 rootPos;
-    uint root;
-
-    ivec3 nodePos;
-    uint node;
-
-    ivec3 leafPos;
-    uint leaf;
-
-    ivec3 voxelPos;
-    float voxelValue;
-};
-
-int VDB_Pattern(in int a, in int b) {
-    int p = 0;
-
-    for (int i = a; i < b; i++) {
-        p |= 1 << i;
-    }
-
-    return p;
-}
-
-ivec3 VDB_ReduceDim(in ivec3 pos, in int l, in int h) {
-    if (bool(h)) {
-        pos &= ivec3(VDB_Pattern(0, h));
-    }
-
-    if (bool(l)) {
-        pos >>= ivec3(l);
-    }
-
-    return pos;
-}
-
-uint VDB_PosToIndex(in ivec3 pos, in int level) {
-    return (pos.x) | (pos.y << level) | (pos.z << (level * 2));
-}
-
-void Bitset_uint32_Access(in uint index, out uint dwordIndex, out uint bitIndex) {
-    dwordIndex = index >> 5;
-    bitIndex = index & 31u;
-}
-
-ivec3 VDB_WorldToVDB(vec3 pos) {
-    ivec3 VDB_Size = s_VdbDesc.highDimBB - s_VdbDesc.lowDimBB;
-    ivec3 VDB_center = (s_VdbDesc.highDimBB + s_VdbDesc.lowDimBB) / 2;
-
-    vec3 AABB_Size = u_SceneData.aabbSize;
-    vec3 AABB_Center = u_SceneData.aabbPosition;
-
-    vec3 sizeRatio = vec3(VDB_Size) / (AABB_Size * u_SceneData.vdbScale);
-    float sizeRatioMax = max(max(sizeRatio.x, sizeRatio.y), sizeRatio.z);
-
-    return ivec3((pos - AABB_Center) * sizeRatioMax) + VDB_center;
-}
-
-VDB_Accessor VDB_GetAccessor(in vec3 pos) {
-    VDB_Accessor acc;
-
-    ivec3 vdb_pos = VDB_WorldToVDB(pos);
-
-    acc.rootPos =  VDB_ReduceDim(vdb_pos, 12, 0);
-    acc.nodePos =  VDB_ReduceDim(vdb_pos, 7, 12);
-    acc.leafPos =  VDB_ReduceDim(vdb_pos, 3, 7);
-    acc.voxelPos = VDB_ReduceDim(vdb_pos, 0, 3);
-
-    return acc;
-}
-
-uint _VDB_CachedRootIndex = 0;
-uint _VDB_CachedNodeIndex = 0;
-uint _VDB_CachedLeafIndex = 0;
-
-bool VDB_IsRootHit(uint index, VDB_Accessor acc) {
-    if (s_VdbRoots.root[index].lowDimBB / 4096 == acc.rootPos) {
-        return true;
-    }
-    return false;
-}
-
-bool VDB_FindRoot(inout VDB_Accessor acc) {
-    if (VDB_IsRootHit(_VDB_CachedRootIndex, acc)) {
-        acc.root = _VDB_CachedRootIndex;
-        return true;
-    }
-
-    for (uint i = 0; i < s_VdbDesc.rootCount; i++) {
-        if (VDB_IsRootHit(i, acc)) {
-            acc.root = i;
-            _VDB_CachedRootIndex = i;
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool VDB_FindNode(inout VDB_Accessor acc) {
-    uint index, bit, mainIndex = VDB_PosToIndex(acc.nodePos, 5);
-
-    Bitset_uint32_Access(mainIndex, index, bit);
-
-    if (!bool(s_VdbRoots.root[acc.root].bitsets[index] & (1 << bit))) { return false; }
-
-    acc.node = s_VdbRoots.root[acc.root].indices[mainIndex];
-    return true;
-}
-
-bool VDB_FindLeaf(inout VDB_Accessor acc) {
-    uint index, bit, mainIndex = VDB_PosToIndex(acc.leafPos, 4);
-
-    Bitset_uint32_Access(mainIndex, index, bit);
-
-    if (!bool(s_VdbNodes.node[acc.node].bitsets[index] & (1 << bit))) { return false; }
-
-    acc.leaf = s_VdbNodes.node[acc.node].indices[mainIndex];
-    return true;
-}
-
-bool VDB_GetVoxel(inout VDB_Accessor acc) {
-    uint index, bit, mainIndex = VDB_PosToIndex(acc.voxelPos, 3);
-
-    Bitset_uint32_Access(VDB_PosToIndex(acc.voxelPos, 3), index, bit);
-
-    if (!bool(s_VdbLeaves.leaf[acc.leaf].bitsets[index] & (1 << bit))) { return false; }
-
-    acc.voxelValue = s_VdbLeaves.leaf[acc.leaf].values[mainIndex];
-    return true;
-}
-
-float _VDB_BackgroundValue = 0;
-float _VDB_VoxelValueMultiplier = 0;
-
-void _INIT_VDB_GetValue() {
-    _VDB_BackgroundValue = u_SceneData.primaryRayLength * u_SceneData.backgroundDensity;
-    _VDB_VoxelValueMultiplier = u_SceneData.primaryRayLength * u_SceneData.vdbDensityMultipier;
-}
-
-float VDB_GetValue(in vec3 pos) {
-    VDB_Accessor acc = VDB_GetAccessor(pos);
-
-    if (!VDB_FindRoot(acc)) {
-        return _VDB_BackgroundValue;
-    }
-
-    if (!VDB_FindNode(acc)) {
-        return _VDB_BackgroundValue;
-    }
-
-    if (!VDB_FindLeaf(acc)) {
-        return _VDB_BackgroundValue;
-    }
-
-    if (!VDB_GetVoxel(acc)) {
-        return _VDB_BackgroundValue;
-    }
-
-    return acc.voxelValue * _VDB_VoxelValueMultiplier;
-}
-
-// end VDB accessor
-
-// begin ray marching
-
 vec4 RayMarching(in vec3 ro, in vec3 rd) {
-    float distAABB = GetDistAABB(ro, rd);// calculate hit distance for AABB domain
+    const float distAABB = GetDistAABB(ro, rd);// calculate hit distance for AABB domain
 
-    if (distAABB > 0.0f) { // jump to AABB boundary
+    if (distAABB > 0.0f) { // outside -> jump to AABB boundary
         RayAdvance(ro, rd, distAABB);
-    } else if (distAABB < 0.0f) { // no hit - bailing out
+    } else if (distAABB < 0.0f) { // no hit -> bailing out
         return vec4(0, 0, 0, 0);
-    }
+    } // if inside -> don't do anything
 
     vec4 accumulatedColor = vec4(vec3(0), 1);
-    float rayLength = SampleBlueNoise(ivec2(gl_FragCoord)).x * u_SceneData.primaryRayLength;
 
-    { // first ray has random length (monte carlo sampling)
+    // first ray has random length (monte carlo sampling)
+    {
+        const float rayLength = SampleBlueNoise(ivec2(gl_FragCoord)).x * u_SceneData.primaryRayLength;
         float value = VDB_GetValue(ro);
 
         accumulatedColor += vec4(vec3(value) * SampleBlueNoise(ivec2(gl_FragCoord)).x, 0);
         RayAdvance(ro, rd, rayLength);
     }
 
+    // every other ray has constant length
     while (InsideAABB(ro)) {
         float value = VDB_GetValue(ro);
 
@@ -467,27 +425,25 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
     return accumulatedColor;
 }
 
-// end ray marching
+// *************************************************** end ray marching primary ray
 
-// begin initialize "almost constant" variables
-
+// Initialize a few "almost constant" variables.
+// Compiler has no knowledge needed to evaluate
+// them at compile time, but we have it.
 void _INIT_() {
     _INIT_VDB_GetValue();
+    _INIT_VDB_WorldToVDB();
 }
-
-// end initialize "almost constant" variables
 
 void main() {
     _INIT_();
 
     vec3 ro, rd;
-
-    getStartingRay(ro, rd);
+    GetStartingRay(ro, rd);
 
     vec4 color = RayMarching(ro, rd);
 
     color.rgb = LinearToHDR(color.rgb, 0.03);
-
     color += NoiseShaping();
 
     FragColor = color;
