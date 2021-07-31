@@ -13,6 +13,7 @@ class vdbClouds;
 
 struct applicationData {
     bool isRunning = true;
+    bool vsync = false;
 
     bool showMainMenuBar = true;
     bool showSceneDataWindow = false;
@@ -59,6 +60,8 @@ private:
     void _uiMainMenuBarFile();
 
     void _uiMainMenuBarWindows();
+
+    void _uiMainMenuBarOptions();
 
     void _uiMainMenuBarFpsCounter();
 

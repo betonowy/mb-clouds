@@ -31,7 +31,7 @@ struct sceneData {
     float vdbDensityMultiplier = 22;
     float backgroundDensity = 0.0;
 
-    float primaryRayLength = 0.01f;
+    float primaryRayLength = 0.029f;
     float primaryRayLengthExp = 1.0f;
     float secondaryRayLength = 0.01f;
     float secondaryRayLengthExp = 1.0f;

@@ -122,7 +122,7 @@ void mb::init::_initSdl() {
 
     _glContext = SDL_GL_CreateContext(_mainWindow);
     SDL_GL_MakeCurrent(_mainWindow, _glContext);
-    SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetSwapInterval(0);
 
     glewInit();
 
@@ -246,6 +246,10 @@ void mb::init::_updateSceneData() {
 
     _sceneData.aabbSize = glm::vec3(cloudSize) / float(maxCoord);
     _sceneData.aabbPosition = {0.004, 0.002, 0.003};
+
+    // sanitize values
+    _sceneData.primaryRayLength = std::max(_sceneData.primaryRayLength, 0.001f);
+    _sceneData.secondaryRayLength = std::max(_sceneData.secondaryRayLength, 0.001f);
 
     _sceneData.update();
 }

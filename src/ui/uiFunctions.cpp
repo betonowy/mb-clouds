@@ -7,6 +7,8 @@
 #include <clouds/vdbClouds.h>
 #include <util/file/binaryFile.h>
 
+#include <SDL_video.h>
+
 #include <sstream>
 
 uiFunctions::uiFunctions(sceneData *sceneDataPtr, applicationData *appData)
@@ -21,6 +23,7 @@ void uiFunctions::_uiMainMenuBar() {
     if (_appData->showMainMenuBar && ImGui::BeginMainMenuBar()) {
         _uiMainMenuBarFile();
         _uiMainMenuBarWindows();
+        _uiMainMenuBarOptions();
         _uiMainMenuBarFpsCounter();
 
         ImGui::EndMainMenuBar();
@@ -53,6 +56,15 @@ void uiFunctions::_uiMainMenuBarFile() {
 void uiFunctions::_uiMainMenuBarWindows() {
     if (ImGui::BeginMenu("Windows")) {
         ImGui::MenuItem("Scene data", nullptr, &_appData->showSceneDataWindow);
+        ImGui::EndMenu();
+    }
+}
+
+void uiFunctions::_uiMainMenuBarOptions() {
+    if (ImGui::BeginMenu("Options")) {
+        if (ImGui::MenuItem("Vsync", nullptr, &_appData->vsync)) {
+            SDL_GL_SetSwapInterval((_appData->vsync) ? 1 : 0);
+        }
         ImGui::EndMenu();
     }
 }
