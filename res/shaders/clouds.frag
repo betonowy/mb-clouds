@@ -6,6 +6,12 @@ uniform sampler2D blueNoiseSampler;
 
 // end samplers
 
+// begin constants
+
+const uint VDB_BAD_INDEX = 0xFFFFFFFF;
+
+// end constants
+
 // scene data uniform buffer objects
 
 layout(std140, binding = 4) uniform SceneData {
@@ -131,7 +137,7 @@ in vec2 ScreenCoord;
 
 float getRandomData(int n) {
     vec4 packedFloats = u_SceneData.randomData[n >> 2];
-    switch(n & 3) {
+    switch (n & 3) {
         case 0:
         return packedFloats.x;
         case 1:
@@ -141,7 +147,7 @@ float getRandomData(int n) {
         case 3:
         return packedFloats.w;
     }
-    return 0; // unreachable, just to please compilers
+    return 0;// unreachable, just to please compilers
 }
 
 // end uniform special access
@@ -338,6 +344,8 @@ VDB_Accessor VDB_GetAccessor(in vec3 pos) {
 }
 
 uint _VDB_CachedRootIndex = 0;
+uint _VDB_CachedNodeIndex = 0;
+uint _VDB_CachedLeafIndex = 0;
 
 bool VDB_IsRootHit(uint index, VDB_Accessor acc) {
     if (s_VdbRoots.root[index].lowDimBB / 4096 == acc.rootPos) {
@@ -364,66 +372,66 @@ bool VDB_FindRoot(inout VDB_Accessor acc) {
 }
 
 bool VDB_FindNode(inout VDB_Accessor acc) {
-    uint bit, index;
-    uint mainIndex = VDB_PosToIndex(acc.nodePos, 5);
+    uint index, bit, mainIndex = VDB_PosToIndex(acc.nodePos, 5);
+
     Bitset_uint32_Access(mainIndex, index, bit);
 
-    if ((s_VdbRoots.root[acc.root].bitsets[index] & (1 << bit)) != 0) {
-        acc.node = s_VdbRoots.root[acc.root].indices[mainIndex];
-        return true;
-    }
+    if (!bool(s_VdbRoots.root[acc.root].bitsets[index] & (1 << bit))) { return false; }
 
-    return false;
+    acc.node = s_VdbRoots.root[acc.root].indices[mainIndex];
+    return true;
 }
 
 bool VDB_FindLeaf(inout VDB_Accessor acc) {
-    uint bit, index;
-    uint mainIndex = VDB_PosToIndex(acc.leafPos, 4);
+    uint index, bit, mainIndex = VDB_PosToIndex(acc.leafPos, 4);
+
     Bitset_uint32_Access(mainIndex, index, bit);
 
-    if ((s_VdbNodes.node[acc.node].bitsets[index] & (1 << bit)) != 0) {
-        acc.leaf = s_VdbNodes.node[acc.node].indices[mainIndex];
-        return true;
-    }
+    if (!bool(s_VdbNodes.node[acc.node].bitsets[index] & (1 << bit))) { return false; }
 
-    return false;
+    acc.leaf = s_VdbNodes.node[acc.node].indices[mainIndex];
+    return true;
 }
 
 bool VDB_GetVoxel(inout VDB_Accessor acc) {
-    uint bit, index;
-    uint mainIndex = VDB_PosToIndex(acc.voxelPos, 3);
+    uint index, bit, mainIndex = VDB_PosToIndex(acc.voxelPos, 3);
+
     Bitset_uint32_Access(VDB_PosToIndex(acc.voxelPos, 3), index, bit);
 
-    if ((s_VdbLeaves.leaf[acc.leaf].bitsets[index] & (1 << bit)) != 0) {
-        acc.voxelValue = s_VdbLeaves.leaf[acc.leaf].values[mainIndex];
-        return true;
-    }
+    if (!bool(s_VdbLeaves.leaf[acc.leaf].bitsets[index] & (1 << bit))) { return false; }
 
-    return false;
+    acc.voxelValue = s_VdbLeaves.leaf[acc.leaf].values[mainIndex];
+    return true;
+}
+
+float _VDB_BackgroundValue = 0;
+float _VDB_VoxelValueMultiplier = 0;
+
+void _INIT_VDB_GetValue() {
+    _VDB_BackgroundValue = u_SceneData.primaryRayLength * u_SceneData.backgroundDensity;
+    _VDB_VoxelValueMultiplier = u_SceneData.primaryRayLength * u_SceneData.vdbDensityMultipier;
 }
 
 float VDB_GetValue(in vec3 pos) {
     VDB_Accessor acc = VDB_GetAccessor(pos);
 
-    const float backGroundValue = u_SceneData.primaryRayLength * u_SceneData.backgroundDensity;
-
     if (!VDB_FindRoot(acc)) {
-        return backGroundValue;
+        return _VDB_BackgroundValue;
     }
 
     if (!VDB_FindNode(acc)) {
-        return backGroundValue;
+        return _VDB_BackgroundValue;
     }
 
     if (!VDB_FindLeaf(acc)) {
-        return backGroundValue;
+        return _VDB_BackgroundValue;
     }
 
     if (!VDB_GetVoxel(acc)) {
-        return backGroundValue;
+        return _VDB_BackgroundValue;
     }
 
-    return acc.voxelValue * u_SceneData.primaryRayLength * u_SceneData.vdbDensityMultipier;
+    return acc.voxelValue * _VDB_VoxelValueMultiplier;
 }
 
 // end VDB accessor
@@ -440,21 +448,20 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
     }
 
     vec4 accumulatedColor = vec4(vec3(0), 1);
+    float rayLength = SampleBlueNoise(ivec2(gl_FragCoord)).x * u_SceneData.primaryRayLength;
 
-    int count = 0;
+    { // first ray has random length (monte carlo sampling)
+        float value = VDB_GetValue(ro);
+
+        accumulatedColor += vec4(vec3(value) * SampleBlueNoise(ivec2(gl_FragCoord)).x, 0);
+        RayAdvance(ro, rd, rayLength);
+    }
 
     while (InsideAABB(ro)) {
         float value = VDB_GetValue(ro);
-        float rayMultipier = 1;
 
-        if (count == 0){
-            rayMultipier = SampleBlueNoise(ivec2(gl_FragCoord)).x;
-        }
-
-        accumulatedColor += vec4(vec3(value), 0) * rayMultipier;
-        RayAdvance(ro, rd, u_SceneData.primaryRayLength * rayMultipier);
-
-        count++;
+        accumulatedColor += vec4(vec3(value), 0);
+        RayAdvance(ro, rd, u_SceneData.primaryRayLength);
     }
 
     return accumulatedColor;
@@ -462,7 +469,17 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
 
 // end ray marching
 
+// begin initialize "almost constant" variables
+
+void _INIT_() {
+    _INIT_VDB_GetValue();
+}
+
+// end initialize "almost constant" variables
+
 void main() {
+    _INIT_();
+
     vec3 ro, rd;
 
     getStartingRay(ro, rd);
