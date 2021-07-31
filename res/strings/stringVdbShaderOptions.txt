@@ -1,0 +1,1 @@
+Not every option is applicable to every shader (some of them may not do anything).

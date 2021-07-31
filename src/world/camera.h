@@ -35,6 +35,8 @@ public:
 
     inline glm::vec3 GetPosition() { return position; }
 
+    [[nodiscard]] inline float GetFov() const { return _fov; }
+
     void RotateAbs(glm::vec3 vector);
 
 private:
@@ -53,7 +55,7 @@ private:
     static constexpr const glm::vec3 up = {0, 0, 1};
     static constexpr const glm::vec3 forward = {0, 1, 0};
 
-    glm::vec3 lookAtVector = {0, 1, 0};
+    glm::vec3 lookAtVector = {glm::normalize(glm::vec3(-1, 1, -0.5))};
     glm::vec3 position = {0, 0, 0};
 
     glm::mat4 fullMatrix = glm::mat4(1.0);

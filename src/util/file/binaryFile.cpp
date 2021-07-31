@@ -32,4 +32,8 @@ namespace mb {
     const unsigned char *binaryFile::data() const { return buffer.data(); }
 
     size_t binaryFile::size() const { return buffer.size(); }
+
+    const std::vector<unsigned char> &binaryFile::vector() const {
+        return buffer;
+    }
 }

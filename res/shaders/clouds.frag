@@ -1,5 +1,11 @@
 #version 450 core
 
+// begin samplers
+
+uniform sampler2D blueNoiseSampler;
+
+// end samplers
+
 // scene data uniform buffer objects
 
 layout(std140, binding = 4) uniform SceneData {
@@ -23,6 +29,27 @@ layout(std140, binding = 4) uniform SceneData {
 
     float vdbScale;
     float aabbScale;
+    float vdbDensityMultipier;
+    float backgroundDensity;
+
+    float primaryRayLength;
+    float primaryRayLengthMultipier;
+    float secondaryRayLength;
+    float secondaryRayLengthMultipier;
+
+    vec3 aabbPosition;
+    float _padding_1;
+
+    vec3 aabbSize;
+    float _padding_2;
+
+    vec3 cameraLookDirCrossX;
+    float _padding_3;
+
+    vec3 cameraLookDirCrossY;
+    float _padding_4;
+
+    vec4 randomData[8];
 } u_SceneData;
 
 // vdb shader storage buffer objects
@@ -92,15 +119,6 @@ layout(std430, binding = 3) buffer VdbLeaves {
 
 // end of vdb shader storage buffer objects
 
-// begin constants
-
-const float c_PrimaryRayStepLength = 0.01;
-const float c_SecondaryRayStepLength = 0.01;
-
-const uint c_BadIndex = 0xFFFFFFFF;
-
-// end constants
-
 // input/output data
 
 out vec4 FragColor;
@@ -108,6 +126,53 @@ out vec4 FragColor;
 in vec2 ScreenCoord;
 
 // end of input output data
+
+// begin uniform special access
+
+float getRandomData(int n) {
+    vec4 packedFloats = u_SceneData.randomData[n >> 2];
+    switch(n & 3) {
+        case 0:
+        return packedFloats.x;
+        case 1:
+        return packedFloats.y;
+        case 2:
+        return packedFloats.z;
+        case 3:
+        return packedFloats.w;
+    }
+    return 0; // unreachable, just to please compilers
+}
+
+// end uniform special access
+
+// begin color filtering
+
+vec3 LinearToHDR(vec3 inColor, float exposure) {
+    const float invGamma = 1.0 / 2.2;
+
+    vec3 tempCol = inColor;
+
+    inColor = vec3(1.0) - exp(-inColor * exposure);
+    inColor = pow(inColor, vec3(invGamma));
+
+    return inColor;
+}
+
+vec4 SampleBlueNoise(ivec2 pixIndex) {
+    vec2 randomOffset = vec2(getRandomData(0), getRandomData(1)) * 1000;
+    pixIndex += ivec2(randomOffset);
+    pixIndex %= textureSize(blueNoiseSampler, 0);
+    return texelFetch(blueNoiseSampler, pixIndex, 0);
+}
+
+vec4 NoiseShaping() {
+    const float noiseValue = 1.0f / 256;
+    const float offset = 0.5f * noiseValue;
+    return vec4(SampleBlueNoise(ivec2(gl_FragCoord.xy)).rgb * noiseValue, 0) - offset;
+}
+
+// end color filtering
 
 // begin first bounce handle functions
 
@@ -125,11 +190,12 @@ void getStartingRay(out vec3 ro, out vec3 rd) {
     rd = normalize(rd);
 }
 
-const vec3 C_P = vec3(0, 0, 0);// 0,1,3
-const vec3 C_S = vec3(1, 1, 1);// 8,8,4
 const float AABB_TOL = 0.99999;
 
 float GetDistAABB(in vec3 pos, in vec3 nor) {
+    const vec3 C_P = u_SceneData.aabbPosition;
+    const vec3 C_S = u_SceneData.aabbSize;
+
     vec3 diff = C_P - pos;
     vec3 absDiff = abs(diff);
 
@@ -189,6 +255,8 @@ void RayAdvance(inout vec3 ro, in vec3 rd, in float dist) {
 }
 
 bool InsideAABB(in vec3 pos) {
+    const vec3 C_P = u_SceneData.aabbPosition;
+    const vec3 C_S = u_SceneData.aabbSize;
     vec3 diff = abs(C_P - pos) * AABB_TOL;
     int cond = int(diff.x < C_S.x) + int(diff.y < C_S.y) + int(diff.z < C_S.z);
     return cond == 3;
@@ -247,13 +315,13 @@ ivec3 VDB_WorldToVDB(vec3 pos) {
     ivec3 VDB_Size = s_VdbDesc.highDimBB - s_VdbDesc.lowDimBB;
     ivec3 VDB_center = (s_VdbDesc.highDimBB + s_VdbDesc.lowDimBB) / 2;
 
-    vec3 AABB_Size = C_S * 2;
-    vec3 AABB_Center = C_P;
+    vec3 AABB_Size = u_SceneData.aabbSize;
+    vec3 AABB_Center = u_SceneData.aabbPosition;
 
     vec3 sizeRatio = vec3(VDB_Size) / (AABB_Size * u_SceneData.vdbScale);
     float sizeRatioMax = max(max(sizeRatio.x, sizeRatio.y), sizeRatio.z);
 
-    return ivec3((pos - AABB_Center) * sizeRatioMax);
+    return ivec3((pos - AABB_Center) * sizeRatioMax) + VDB_center;
 }
 
 VDB_Accessor VDB_GetAccessor(in vec3 pos) {
@@ -337,7 +405,7 @@ bool VDB_GetVoxel(inout VDB_Accessor acc) {
 float VDB_GetValue(in vec3 pos) {
     VDB_Accessor acc = VDB_GetAccessor(pos);
 
-    const float backGroundValue = 0.0001f;
+    const float backGroundValue = u_SceneData.primaryRayLength * u_SceneData.backgroundDensity;
 
     if (!VDB_FindRoot(acc)) {
         return backGroundValue;
@@ -355,7 +423,7 @@ float VDB_GetValue(in vec3 pos) {
         return backGroundValue;
     }
 
-    return acc.voxelValue;
+    return acc.voxelValue * u_SceneData.primaryRayLength * u_SceneData.vdbDensityMultipier;
 }
 
 // end VDB accessor
@@ -373,37 +441,26 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
 
     vec4 accumulatedColor = vec4(vec3(0), 1);
 
+    int count = 0;
+
     while (InsideAABB(ro)) {
         float value = VDB_GetValue(ro);
+        float rayMultipier = 1;
 
-        accumulatedColor += vec4(vec3(value), 0);
+        if (count == 0){
+            rayMultipier = SampleBlueNoise(ivec2(gl_FragCoord)).x;
+        }
 
-        RayAdvance(ro, rd, c_PrimaryRayStepLength);
+        accumulatedColor += vec4(vec3(value), 0) * rayMultipier;
+        RayAdvance(ro, rd, u_SceneData.primaryRayLength * rayMultipier);
+
+        count++;
     }
 
     return accumulatedColor;
 }
 
 // end ray marching
-
-// begin color filtering
-
-vec3 LinearToHDR(vec3 inColor, float exposure) {
-    const float invGamma = 1.0 / 2.2;
-
-    // color bleed
-    vec3 tempCol = inColor;
-    // inColor.r += tempCol.g * 0.15 + tempCol.b * 0.01;
-    // inColor.g += tempCol.r * 0.15 + tempCol.b * 0.1;
-    // inColor.b += tempCol.g * 0.1 + tempCol.r * 0.01;
-
-    inColor = vec3(1.0) - exp(-inColor * exposure);
-    inColor = pow(inColor, vec3(invGamma));
-
-    return inColor;
-}
-
-// end color filtering
 
 void main() {
     vec3 ro, rd;
@@ -413,6 +470,8 @@ void main() {
     vec4 color = RayMarching(ro, rd);
 
     color.rgb = LinearToHDR(color.rgb, 0.03);
+
+    color += NoiseShaping();
 
     FragColor = color;
 }

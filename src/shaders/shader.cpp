@@ -12,7 +12,12 @@
 #include <iostream>
 
 shader::shader(std::initializer_list<const char *> sources) {
-    _compileSources(sources);
+    _compileSources(sources.begin(), sources.end());
+    _initBindings();
+}
+
+shader::shader(const std::vector<std::string> &sources) {
+    _compileSources(sources.begin(), sources.end());
     _initBindings();
 }
 
@@ -22,9 +27,10 @@ shader::~shader() {
     }
 }
 
-void shader::_compileSources(const std::initializer_list<const char *> &sources) {
-    for (auto &source : sources) {
-        std::string_view path(source);
+template<class iterator>
+void shader::_compileSources(iterator begin, iterator end) {
+    while (begin != end) {
+        std::string_view path(*begin);
 
         GLenum shaderType = GL_INVALID_ENUM;
 
@@ -36,11 +42,12 @@ void shader::_compileSources(const std::initializer_list<const char *> &sources)
 
         if (shaderType == GL_INVALID_ENUM) {
             std::stringstream ss;
-            ss << "Unrecognizable shader file extension: " << source;
+            ss << "Unrecognizable shader file extension: " << *begin;
             mb::misc::exception(ss.str().c_str());
         }
 
-        describedSources.emplace_back(source, shaderType);
+        describedSources.emplace_back(*begin, shaderType);
+        ++begin;
     }
 
     _compileSource(GL_VERTEX_SHADER);
@@ -171,6 +178,8 @@ void shader::use() const {
 }
 
 void shader::_initBindings() {
+    use();
+
     auto bindUbo = [this](GLuint index, const char *name) {
         auto glIndex = glGetProgramResourceIndex(programID, GL_UNIFORM_BLOCK, name);
 
@@ -189,10 +198,21 @@ void shader::_initBindings() {
         glShaderStorageBlockBinding(programID, glIndex, index);
     };
 
+    auto bindsampler = [this](GLint index, const char *name) {
+        auto glIndex = glGetUniformLocation(programID, name);
+
+        if (glIndex == -1) return;
+
+        std::cout << "Shader has sampler: " << name << "\n";
+        glUniform1i(glIndex, index);
+    };
+
     bindSsbo(bindings::vdbDesc, "VdbDesc");
     bindSsbo(bindings::vdbRoots, "VdbRoots");
     bindSsbo(bindings::vdbNodes, "VdbNodes");
     bindSsbo(bindings::vdbLeaves, "VdbLeaves");
 
     bindUbo(bindings::sceneData, "SceneData");
+
+    bindsampler(0, "blueNoiseSampler");
 }

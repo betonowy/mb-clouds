@@ -64,7 +64,10 @@ void MessageCallback([[maybe_unused]] GLenum source, GLenum type,
     std::cout << std::endl;
 }
 
-mb::init::init() : _uiFunctions(&_sceneData, &_appData) {
+mb::init::init()
+        : _uiFunctions(&_sceneData, &_appData),
+          _random(std::random_device()()),
+          _uniformDist(_uniformRandomRangeLow, _uniformRandomRangeHigh) {
     if (_currentInitInstance) {
         misc::exception("Cannot invoke more than one init instance");
     }
@@ -85,6 +88,11 @@ void mb::init::_initEverything() {
     _initImGui();
 
     _vdbClouds = std::make_unique<vdbClouds>(filePaths::VDB_CLOUD_HD);
+
+    _blueNoiseTexture = std::make_unique<texture>(filePaths::TEX_BLUENOISE, texIndex::texBlueNoise);
+
+    _uiFunctions.setVdbCloudsPtr(_vdbClouds.get());
+    _uiFunctions._initValues();
 
     std::cout << "Init everything done\n";
 }
@@ -139,6 +147,8 @@ void mb::init::_initImGui() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
+
+    ImGui::GetStyle().Alpha = 0.8;
 
     ImGui_ImplSDL2_InitForOpenGL(_mainWindow, _glContext);
     ImGui_ImplOpenGL3_Init("#version 130");
@@ -207,6 +217,13 @@ void mb::init::_windowTitleFps() {
 }
 
 void mb::init::_updateSceneData() {
+    _sceneData.cameraPosition = _camera.GetPosition();
+    _sceneData.fov = _camera.GetFov();
+    _sceneData.cameraLookDir = _camera.GetLookDir();
+    _sceneData.viewMatrix = _camera.GetView();
+    _sceneData.projectionMatrix = _camera.GetProjection();
+    _sceneData.combinedMatrix = _camera.GetCombined();
+
     {
         int x, y;
         SDL_GetWindowSize(_mainWindow, &x, &y);
@@ -215,8 +232,20 @@ void mb::init::_updateSceneData() {
         _sceneData.windowResolution = {x, y};
     }
 
-    _sceneData.cameraLookDir = _camera.GetLookDir();
-    _sceneData.cameraPosition = _camera.GetPosition();
+    int a = 0;
+
+    for (auto &n : _sceneData.randomData) {
+        n = _uniformDist(_random);
+    }
+
+    dimType cloudSize = _vdbClouds->getSize();
+    int maxCoord = 0;
+    for (int i = 0; i < dimType::length(); i++) {
+        maxCoord = std::max(cloudSize[i], maxCoord);
+    }
+
+    _sceneData.aabbSize = glm::vec3(cloudSize) / float(maxCoord);
+    _sceneData.aabbPosition = {0.004, 0.002, 0.003};
 
     _sceneData.update();
 }
@@ -314,6 +343,8 @@ void mb::init::_processEvents() {
                         case SDLK_r:
                             _appData.rKey = value;
                             break;
+                        case SDLK_F11:
+                            _appData.f11Key = value;
                     }
                     break;
                 }
@@ -342,7 +373,7 @@ void mb::init::_cameraHandle() {
     _appData.cameraRotation.y = std::min(_appData.cameraRotation.y, float(M_PI / 2 - 0.01));
     _appData.cameraRotation.y = std::max(_appData.cameraRotation.y, float(-M_PI / 2 + 0.01));
 
-    auto& vec = _appData.cameraRotation;
+    auto &vec = _appData.cameraRotation;
 
     if (vec.x > M_PI) vec.x -= 2 * M_PI;
     else if (vec.x < M_PI) vec.x += 2 * M_PI;
@@ -357,6 +388,7 @@ void mb::init::_cameraHandle() {
 void mb::init::_mouseMotionHandle(glm::vec2 mAbs, glm::vec2 mRel, glm::vec2 pAbs, glm::vec2 pRel) {
     if (_appData.rotateCamera) {
         _appData.cameraRotation += glm::vec3(mRel.x, -mRel.y, 0);
+        _sceneData.mousePosition = pAbs;
     }
 }
 

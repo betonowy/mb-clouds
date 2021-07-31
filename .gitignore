@@ -1,6 +1,6 @@
 .idea/
 cmake-build-*/
-res/vdb
+res/vdb/*vdb
 build*/
 .cache/
 .vscode/

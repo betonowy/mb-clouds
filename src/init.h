@@ -9,10 +9,13 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include <backends/imgui_impl_opengl3.h>
-#include <memory>
 #include <shaders/sceneData.h>
 #include <ui/uiFunctions.h>
 #include <world/camera.h>
+#include <shaders/texture.h>
+
+#include <memory>
+#include <random>
 
 class vdbClouds;
 
@@ -118,6 +121,18 @@ namespace mb {
         // vdbClouds
 
         std::unique_ptr<vdbClouds> _vdbClouds;
+
+        // textures
+
+        std::unique_ptr<texture> _blueNoiseTexture;
+
+        // random engine
+
+        static constexpr float _uniformRandomRangeLow = 0.0f;
+        static constexpr float _uniformRandomRangeHigh = 1.0f;
+
+        std::ranlux24_base _random;
+        std::uniform_real_distribution<float> _uniformDist;
     };
 }
 

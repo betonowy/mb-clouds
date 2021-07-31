@@ -9,6 +9,8 @@
 #include <tree/vdbDataExtract.h>
 #include <shaders/shader.h>
 
+#include <memory>
+
 class vdbClouds {
     using glCloudStorageType = cloudStorage<float, 5, 4, 3>;
     using vdbGlType = vdbGl<float, 5, 4, 3>;
@@ -21,6 +23,16 @@ public:
     void render();
 
     void recompileShaders();
+
+    void recompileShaders(std::string_view name);
+
+    void changeDataset(std::string_view path);
+
+    const std::vector<std::string>& getAvailableVdbFiles();
+
+    const std::vector<std::pair<std::string, std::vector<std::string>>> &getAvailableShaders();
+
+    [[nodiscard]] inline dimType getSize() const { return _dataset->getHighDim() - _dataset->getLowDim(); }
 
 private:
     std::string _vdbPath;
@@ -43,10 +55,16 @@ private:
 
     void _resetShaders();
 
+    void _pushShader(const std::string &name, std::initializer_list<const char *> sources);
+
     std::unique_ptr<vdbDatasetType> _dataset;
     std::unique_ptr<glCloudStorageType> _cloudStorage;
 
+    std::string lastShader;
     std::unique_ptr<shader> _cloudShader;
+
+    std::vector<std::pair<std::string, std::vector<std::string>>> _availableShaders;
+    std::vector<std::string> _availableVdbFiles;
 };
 
 

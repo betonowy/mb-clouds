@@ -7,6 +7,9 @@
 
 #include <shaders/sceneData.h>
 #include <imgui.h>
+#include <string>
+
+class vdbClouds;
 
 struct applicationData {
     bool isRunning = true;
@@ -20,11 +23,13 @@ struct applicationData {
     bool rotateCamera = false;
     bool moveCamera = false;
 
-    glm::vec3 cameraRotation = {};
+    glm::vec3 cameraRotation = {M_PI / 4, M_PI / 8, 0};
     float cameraRotationSpeed = 1;
-    float cameraMoveSpeed = 4;
+    float cameraMoveSpeed = 1;
 
     bool wantsRecompileShaders = false;
+    bool wantsToggleFullScreen = false;
+    bool wantsToggleImGui = false;
 
     bool wKey{};
     bool sKey{};
@@ -33,13 +38,19 @@ struct applicationData {
     bool qKey{};
     bool eKey{};
     bool rKey{};
+
+    bool f11Key{};
 };
 
 class uiFunctions {
 public:
-    explicit uiFunctions(sceneData* sceneDataPtr, applicationData* appData);
+    explicit uiFunctions(sceneData *sceneDataPtr, applicationData *appData);
 
     void doUi();
+
+    void setVdbCloudsPtr(vdbClouds *vdbCloudsPtr);
+
+    void _initValues();
 
 private:
 
@@ -57,9 +68,18 @@ private:
 
     void _uiSceneDataWindow();
 
-    sceneData* _sceneDataPtr;
-    applicationData* _appData;
+    sceneData *_sceneDataPtr;
+    applicationData *_appData;
+    vdbClouds *_vdbCloudsPtr{};
 
+    // variables
+
+    std::string currentShaderStr;
+    std::string currentVdbFileStr;
+
+    // strings
+
+    std::string _strVdbShaderOptions;
 };
 
 #endif //MB_CLOUDS_UIFUNCTIONS_H

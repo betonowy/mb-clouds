@@ -280,6 +280,15 @@ public:
     void setValue(dimType pos, const valueType &value) {
         accessorType accessor(pos);
 
+        if (!initializedBB) {
+            lowDimBB = pos;
+            highDimBB = pos;
+            initializedBB = true;
+        } else {
+            lowDimBB = glm::min(pos, lowDimBB);
+            highDimBB = glm::max(pos, highDimBB);
+        }
+
         uint32_t rootIndex = _findRoot(accessor.rootPos);
 
         if (rootIndex == vdbBadIndex) {
@@ -422,27 +431,11 @@ public:
     }
 
     [[nodiscard]] dimType getLowDim() const {
-        dimType dim = roots.front().getLowDim();
-
-        for (auto &root : roots) {
-            for (int i = 0; i < dimType::length(); i++) {
-                dim[i] = std::min(dim[i], root.getLowDim()[i]);
-            }
-        }
-
-        return dim * (1 << topLevel);
+        return lowDimBB;
     }
 
     [[nodiscard]] dimType getHighDim() const {
-        dimType dim = roots.front().getHighDim();
-
-        for (auto &root : roots) {
-            for (int i = 0; i < dimType::length(); i++) {
-                dim[i] = std::max(dim[i], root.getHighDim()[i]);
-            }
-        }
-
-        return dim * (1 << topLevel);
+        return highDimBB;
     }
 
     const auto &getRoots() const { return roots; }
@@ -512,6 +505,11 @@ private:
     std::vector<rootType> roots;
 
     valueType backgroundValue{};
+
+    bool initializedBB = false;
+
+    dimType lowDimBB{};
+    dimType highDimBB{};
 };
 
 #endif //MB_CLOUDS_VDBDATA_H

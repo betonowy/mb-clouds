@@ -18,6 +18,8 @@ namespace mb {
 
         [[nodiscard]] size_t size() const;
 
+        [[nodiscard]] const std::vector<unsigned char>& vector() const;
+
     private:
         std::vector<unsigned char> buffer;
     };

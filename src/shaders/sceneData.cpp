@@ -10,8 +10,6 @@
 #include <cstring>
 
 namespace {
-    sceneData lastUpdated;
-
     void updateUBO(void* data) {
         static shaderUBO ubo(bindings::sceneData, sizeof(sceneData));
 
@@ -21,5 +19,9 @@ namespace {
 
 void sceneData::update() {
     updateUBO(this);
+}
+
+void sceneData::reset() {
+    *this = sceneData();
 }
 

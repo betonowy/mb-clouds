@@ -8,8 +8,18 @@
 
 vdbClouds::vdbClouds(std::string path)
         : _vdbPath(std::move(path)) {
-    _initCloudStorage();
-    _initShaders();
+    _pushShader("Debug AABB", std::initializer_list<const char *>{
+            filePaths::GLSL_SCREEN_QUAD_VERT,
+            filePaths::GLSL_VDB_DEBUG_AABB_FRAG
+    });
+    _pushShader("Latest", std::initializer_list<const char *>{
+            filePaths::GLSL_SCREEN_QUAD_VERT,
+            filePaths::GLSL_VDB_LATEST_FRAG
+    });
+
+    _availableVdbFiles = {filePaths::VDB_CLOUD_HD, filePaths::VDB_CLOUD_MD, filePaths::VDB_CLOUD_LD};
+
+//    _initCloudStorage();
 }
 
 vdbClouds::~vdbClouds() {
@@ -89,10 +99,7 @@ void vdbClouds::_resetCloudStorage() {
 
 void vdbClouds::_initShaders() {
     if (_cloudShader) return;
-    _cloudShader = std::make_unique<shader>(std::initializer_list<const char *>{
-            filePaths::GLSL_CLOUD_VERT,
-            filePaths::GLSL_CLOUD_FRAG
-    });
+    recompileShaders(_availableShaders.front().first);
 }
 
 void vdbClouds::_destroyShaders() {
@@ -100,11 +107,17 @@ void vdbClouds::_destroyShaders() {
 }
 
 void vdbClouds::_resetShaders() {
-    _destroyShaders();
-    _initShaders();
+    if (lastShader.empty()) {
+        _destroyShaders();
+        _initShaders();
+    } else {
+        recompileShaders(lastShader);
+    }
 }
 
 void vdbClouds::render() {
+    if (!_cloudShader) return;
+
     _cloudShader->use();
     _cloudStorage->bind();
     glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -112,4 +125,32 @@ void vdbClouds::render() {
 
 void vdbClouds::recompileShaders() {
     _resetShaders();
+}
+
+void vdbClouds::_pushShader(const std::string& name, std::initializer_list<const char *> sources) {
+    _availableShaders.emplace_back(name, std::vector<std::string>(sources.begin(), sources.end()));
+}
+
+const std::vector<std::pair<std::string, std::vector<std::string>>> &vdbClouds::getAvailableShaders() {
+    return _availableShaders;
+}
+
+void vdbClouds::recompileShaders(std::string_view name) {
+    std::cout << "Recompiling program <<< " << name << " >>>\n";
+    lastShader = name;
+    auto iter = std::find_if(_availableShaders.begin(), _availableShaders.end(), [&name](auto pair) {
+        return pair.first == name;
+    });
+
+    _cloudShader = std::make_unique<shader>(iter->second);
+}
+
+const std::vector<std::string> &vdbClouds::getAvailableVdbFiles() {
+    return _availableVdbFiles;
+}
+
+void vdbClouds::changeDataset(std::string_view path) {
+    _vdbPath = path;
+    _destroyDataset();
+    _resetCloudStorage();
 }

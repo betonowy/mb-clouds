@@ -13,14 +13,18 @@
 
 class shader {
 public:
-    shader(std::initializer_list<const char*> sources);
+
+    explicit shader(std::initializer_list<const char*> sources);
+
+    explicit shader(const std::vector<std::string>& sources);
 
     ~shader();
 
     void use() const;
 
 private:
-    void _compileSources(const std::initializer_list<const char*> &sources);
+    template<class iterator>
+    void _compileSources(iterator begin, iterator end);
 
     void _compileSource(GLenum requestedType);
 
