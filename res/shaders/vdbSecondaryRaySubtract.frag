@@ -46,6 +46,21 @@ layout(std140, binding = 4) uniform SceneData {
     vec3 cameraLookDirCrossY;
     float _padding_4;
 
+    vec3 sunDir;
+    float sunPower;
+
+    vec3 sunColor;
+    float sunFocus;
+
+    vec3 backgroundColorTop;
+    float _padding_5;
+
+    vec3 backgroundColorBottom;
+    float _padding_6;
+
+    vec3 backgroundColorMid;
+    float _padding_7;
+
     vec4 randomData[8];
 } u_SceneData;
 
@@ -320,6 +335,64 @@ float VDB_GetValue(in vec3 pos) {
 }
 
 // *************************************************** end VDB accessor
+
+// *************************************************** begin background generator
+
+vec3 BackgroundSun(vec3 rayDirection) {
+    vec3 color = vec3(0);
+    const float sunFocus = 40000.0;
+
+    float sunInfluence = 0.5 * (dot(rayDirection, sunDirection) + 1.0);
+    sunInfluence = pow(sunInfluence, sunFocus);
+
+    color += sunColor * sunInfluence;
+
+    return color;
+}
+
+vec3 BackgroundSky(vec3 rayDirection) {
+    const vec3 skyColor = vec3(0.1, 0.4, 8.0);
+    const vec3 sunScatterColor = vec3(2.0, 1.75, 1.5);
+    const float sunFocus = 2.0;
+    const float sunFocusB = 2.0;
+
+    vec3 color = vec3(0);
+
+    float sunInfluence = 0.5 * (dot(rayDirection, sunDirection) + 1.0);
+    sunInfluence = pow(sunInfluence, sunFocus);
+
+    sunInfluence = MapValue(0.0, 1.0, 0.5, 1.0, sunInfluence);
+
+    color += skyColor * sunInfluence;
+
+    sunInfluence = pow(sunInfluence, sunFocusB);
+
+    color += sunScatterColor * sunInfluence;
+
+    return color;
+}
+
+vec3 BackgroundColor(vec3 rayDirection) {
+    vec3 color = vec3(0);
+    const vec3 groundColor = vec3(0.05, 0.08, 0.19);
+    const float zenithBlackout = 0.95;
+    const float groundInfluence = 32.0;
+    vec3 skyColor = BackgroundSky(rayDirection);
+
+    float zenith = (rayDirection.y + 1.0) * 0.5;
+    float zenithBis = clamp(2.0 * zenith - 1.0, 0.0, 1.0);
+
+    if (zenith < 0.5) zenith = pow(zenith, 1.0 - groundInfluence * (zenith - 0.5));
+    color += skyColor * zenith + groundColor * (1.0 - zenith);
+
+    color -= zenithBlackout * pow(zenithBis, 0.8) * skyColor;
+
+    color += BackgroundSun(rayDirection);
+
+    return color;
+}
+
+// *************************************************** end background generator
 
 // *************************************************** begin ray marching primary ray
 

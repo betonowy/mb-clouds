@@ -129,6 +129,39 @@ void uiFunctions::_uiSceneDataWindow() {
                          0.0004f, 0.001f, 0.1f, "%.3f", ImGuiSliderFlags_Logarithmic);
         ImGui::DragFloat("Ray secondary step exp", &_sceneDataPtr->secondaryRayLengthExp,
                          0.001f, 1.0f, 1.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        ImGui::Separator();
+
+        ImGui::Text("Background settings");
+
+        ImGui::DragFloat3("Sun direction", reinterpret_cast<float *>(&(_sceneDataPtr->sunDir)), 0.01, -1, 1);
+
+        ImGui::DragFloat("Sun focus", reinterpret_cast<float *>(&(_sceneDataPtr->sunFocus)),
+                         0.1f, 1.0f, 100.0f, "%.3f",
+                         ImGuiSliderFlags_Logarithmic);
+
+        ImGui::ColorPicker3("Sun color", reinterpret_cast<float *>(&(_sceneDataPtr->sunColor)));
+
+        ImGui::DragFloat("Sun power", reinterpret_cast<float *>(&(_sceneDataPtr->sunPower)),
+                         0.1f, 0.0f, 100.0f, "%.3f",
+                         ImGuiSliderFlags_Logarithmic);
+
+        ImGui::ColorPicker3("BHi color", reinterpret_cast<float *>(&(_sceneDataPtr->backgroundColorTop)));
+
+        ImGui::DragFloat("BHi power", reinterpret_cast<float *>(&(_sceneDataPtr->sunPower)),
+                         0.1f, 0.0f, 100.0f, "%.3f",
+                         ImGuiSliderFlags_Logarithmic);
+
+        ImGui::ColorPicker3("BMi color", reinterpret_cast<float *>(&(_sceneDataPtr->backgroundColorMid)));
+
+        ImGui::DragFloat("BMi power", reinterpret_cast<float *>(&(_sceneDataPtr->sunPower)),
+                         0.1f, 0.0f, 100.0f, "%.3f",
+                         ImGuiSliderFlags_Logarithmic);
+
+        ImGui::ColorPicker3("BLo color", reinterpret_cast<float *>(&(_sceneDataPtr->backgroundColorBottom)));
+
+        ImGui::DragFloat("BLo power", reinterpret_cast<float *>(&(_sceneDataPtr->sunPower)),
+                         0.1f, 0.0f, 100.0f, "%.3f",
+                         ImGuiSliderFlags_Logarithmic);
 
         ImGui::PopItemWidth();
 

@@ -46,6 +46,21 @@ layout(std140, binding = 4) uniform SceneData {
     vec3 cameraLookDirCrossY;
     float _padding_4;
 
+    vec3 sunDir;
+    float sunPower;
+
+    vec3 sunColor;
+    float sunFocus;
+
+    vec3 backgroundColorTop;
+    float topPower;
+
+    vec3 backgroundColorBottom;
+    float bottomPower;
+
+    vec3 backgroundColorMid;
+    float midPower;
+
     vec4 randomData[8];
 } u_SceneData;
 
@@ -67,6 +82,16 @@ float getRandomData(in int n) {
 out vec4 FragColor;
 
 in vec2 ScreenCoord;
+
+// *************************************************** begin utilities
+
+float MapValue(float as, float bs, float ad, float bd, float value) {
+    float ratio = (value - as) / (bs - as);
+    value = ratio * (bd - ad) + ad;
+    return value;
+}
+
+// *************************************************** end utilities
 
 // *************************************************** begin post processing
 
@@ -95,6 +120,60 @@ vec4 NoiseShaping() {
 }
 
 // *************************************************** end post processing
+
+// *************************************************** begin background generator
+
+vec3 BackgroundSun(vec3 rd) {
+    vec3 color = vec3(0);
+
+    float sunInfluence = 0.5 * (dot(rd, u_SceneData.sunDir) + 1.0);
+    sunInfluence = pow(sunInfluence, u_SceneData.sunFocus);
+
+    color += u_SceneData.sunColor * sunInfluence * u_SceneData.sunPower;
+
+    return color;
+}
+
+vec3 BackgroundSky(vec3 rd) {
+    const float sunFocus = 2.0;
+    const float sunFocusB = 2.0;
+
+    vec3 color = vec3(0);
+
+    float sunInfluence = 0.5 * (dot(rd, u_SceneData.sunDir) + 1.0);
+    sunInfluence = pow(sunInfluence, sunFocus);
+
+    sunInfluence = MapValue(0.0, 1.0, 0.5, 1.0, sunInfluence);
+
+    color += u_SceneData.backgroundColorTop * sunInfluence * u_SceneData.topPower;
+
+    sunInfluence = pow(sunInfluence, sunFocusB);
+
+    color += u_SceneData.backgroundColorMid * sunInfluence * u_SceneData.midPower;
+
+    return color;
+}
+
+vec3 BackgroundColor(vec3 rd) {
+    vec3 color = vec3(0);
+    const float zenithBlackout = 0.95;
+    const float groundInfluence = 32.0;
+    vec3 skyColor = BackgroundSky(rd);
+
+    float zenith = (rd.z + 1.0) * 0.5;
+    float zenithBis = clamp(2.0 * zenith - 1.0, 0.0, 1.0);
+
+    if (zenith < 0.5) zenith = pow(zenith, 1.0 - groundInfluence * (zenith - 0.5));
+    color += skyColor * zenith + u_SceneData.backgroundColorBottom * (1.0 - zenith) * u_SceneData.bottomPower;
+
+    color -= zenithBlackout * pow(zenithBis, 0.8) * skyColor;
+
+    color += BackgroundSun(rd);
+
+    return color;
+}
+
+// *************************************************** end background generator
 
 // *************************************************** begin first bounce handle functions
 
@@ -162,7 +241,7 @@ float GetDistAABB(in vec3 pos, in vec3 nor) {
 vec3 RayTraceDistToCol(in vec3 ro, in vec3 rd) {
     float dO = GetDistAABB(ro, rd);
     if (dO == 0.0f) return vec3(0.01, 0.02, 0.05);// You're inside
-    else if (dO < -0.0f) return vec3(0.75, 1.5, 4.0);// no intersection
+    else if (dO < -0.0f) return BackgroundColor(rd);// no intersection
     dO = pow(dO, 2.0);
     return vec3(dO / 16, dO / 4, dO);
 }
@@ -175,7 +254,7 @@ void main() {
 
     vec4 color = vec4(RayTraceDistToCol(ro, rd), 1.0);
 
-    color.rgb = LinearToHDR(color.rgb, 0.1);
+    color.rgb = LinearToHDR(color.rgb, 1.0);
     color += NoiseShaping();
 
     FragColor = color;

@@ -12,7 +12,7 @@ namespace filePaths {
     static constexpr const char* VDB_CLOUD_MD = "../res/vdb/cloud-md.vdb";
     static constexpr const char* VDB_CLOUD_LD = "../res/vdb/cloud-ld.vdb";
 
-    static constexpr const char* GLSL_VDB_LATEST_FRAG = "../res/shaders/clouds.frag";
+    static constexpr const char* GLSL_VDB_LATEST_FRAG = "../res/shaders/vdbSimpleColorAdditive.frag";
     static constexpr const char* GLSL_VDB_DEBUG_AABB_FRAG = "../res/shaders/vdbDebugAABB.frag";
     static constexpr const char* GLSL_SCREEN_QUAD_VERT = "../res/shaders/screenQuad.vert";
 

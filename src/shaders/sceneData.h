@@ -48,6 +48,21 @@ struct sceneData {
     glm::vec3 cameraLookDirCrossY{1, 1, 1};
     float _padding_4;
 
+    glm::vec3 sunDir = glm::normalize(glm::vec3(0, 1, 0.5));
+    float sunPower = 10.0f;
+
+    glm::vec3 sunColor{1, 0.8, 0.6};
+    float sunFocus = 40000.0f;
+
+    glm::vec3 backgroundColorTop{0.0125, 0.05, 1.0};
+    float topPower = 8;
+
+    glm::vec3 backgroundColorBottom{0.05, 0.08, 0.19};
+    float bottomPower = 1;
+
+    glm::vec3 backgroundColorMid{1.0, 0.875, 0.75};
+    float midPower = 2;
+
     float randomData[32];
 
     void update();

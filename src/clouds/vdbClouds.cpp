@@ -12,7 +12,7 @@ vdbClouds::vdbClouds(std::string path)
             filePaths::GLSL_SCREEN_QUAD_VERT,
             filePaths::GLSL_VDB_DEBUG_AABB_FRAG
     });
-    _pushShader("Latest", std::initializer_list<const char *>{
+    _pushShader("Color Additive", std::initializer_list<const char *>{
             filePaths::GLSL_SCREEN_QUAD_VERT,
             filePaths::GLSL_VDB_LATEST_FRAG
     });

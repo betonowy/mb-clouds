@@ -250,6 +250,7 @@ void mb::init::_updateSceneData() {
     // sanitize values
     _sceneData.primaryRayLength = std::max(_sceneData.primaryRayLength, 0.001f);
     _sceneData.secondaryRayLength = std::max(_sceneData.secondaryRayLength, 0.001f);
+    _sceneData.sunDir /= glm::length(_sceneData.sunDir);
 
     _sceneData.update();
 }
