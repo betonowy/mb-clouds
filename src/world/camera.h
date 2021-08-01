@@ -9,6 +9,8 @@
 
 class camera {
 public:
+    camera();
+
     glm::mat4 GetCombined();
 
     glm::mat4 GetView();
@@ -31,6 +33,8 @@ public:
 
     void MoveRelative(glm::vec3 vector);
 
+    void MoveRelativeAbs(glm::vec3 vector);
+
     inline glm::vec3 GetLookDir() { return lookAtVector; }
 
     inline glm::vec3 GetPosition() { return position; }
@@ -38,6 +42,12 @@ public:
     [[nodiscard]] inline float GetFov() const { return _fov; }
 
     void RotateAbs(glm::vec3 vector);
+
+    inline glm::vec3 getRelX() { return xPlus; }
+
+    inline glm::vec3 getRelY() { return yPlus; }
+
+    inline glm::vec3 getRelZ() { return zPlus; }
 
 private:
     glm::mat4 viewMatrix = glm::mat4(1.0);
@@ -48,9 +58,13 @@ private:
 
     float zNear = 0.1f, zFar = 1000.f;
     float _fov = 90.0;
-    float _aspectRatio;
+    float _aspectRatio{};
 
     glm::mat4 worldTransform = glm::mat4(1.0);
+
+    glm::vec3 zPlus{}, xPlus{}, yPlus{};
+
+    void _recalculateRelativeAxis();
 
     static constexpr const glm::vec3 up = {0, 0, 1};
     static constexpr const glm::vec3 forward = {0, 1, 0};

@@ -264,6 +264,8 @@ void mb::init::_userInterface() {
     _qKeyAction();
     _eKeyAction();
     _rKeyAction();
+    _f11KeyAction();
+    _rightMouseButtonAction();
 }
 
 void mb::init::_render() {
@@ -366,10 +368,13 @@ void mb::init::_leftMouseButtonHandle(bool value) {
 void mb::init::_rightMouseButtonHandle(bool value) {
     // for now only one app state
 
-    _appData.moveCamera = value;
+    _appData.rightMouseButton = value;
 }
 
 void mb::init::_cameraHandle() {
+    _sceneData.cameraPosition += _appData.cameraSpeed * _appData.currentFrameTime;
+    _appData.cameraSpeed -= _appData.cameraSpeed * std::min(_appData.cameraSlowDownSpeed * _appData.currentFrameTime, 0.99f);
+
     _camera.SetFovAndAspectRatio(_sceneData.fov, _sceneData.aspectRatio);
     _camera.SetPositionAndDirection(_sceneData.cameraPosition, _sceneData.cameraLookDir);
     _camera.RotateAbs(_appData.cameraRotation);
@@ -390,45 +395,55 @@ void mb::init::_cameraHandle() {
 }
 
 void mb::init::_mouseMotionHandle(glm::vec2 mAbs, glm::vec2 mRel, glm::vec2 pAbs, glm::vec2 pRel) {
-    if (_appData.rotateCamera) {
-        _appData.cameraRotation += glm::vec3(mRel.x, -mRel.y, 0);
+    if (_appData.rotateCamera || _appData.relativeMode) {
+        if (_appData.relativeMode) {
+            _appData.cameraRotation += glm::vec3(-pRel.x, pRel.y, 0) / 500.0f;
+        } else {
+            _appData.cameraRotation += glm::vec3(mRel.x, -mRel.y * _sceneData.aspectRatio, 0);
+        }
         _sceneData.mousePosition = pAbs;
     }
 }
 
 void mb::init::_wKeyAction() {
     if (_appData.wKey) {
-        _camera.MoveRelative(glm::vec3(0, 1, 0) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
+        _appData.cameraSpeed += _camera.getRelY() * _appData.currentFrameTime * _appData.cameraAcceleration;
+//        _camera.MoveRelative(glm::vec3(0, 1, 0) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
     }
 }
 
 void mb::init::_sKeyAction() {
     if (_appData.sKey) {
-        _camera.MoveRelative(glm::vec3(0, -1, 0) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
+        _appData.cameraSpeed -= _camera.getRelY() * _appData.currentFrameTime * _appData.cameraAcceleration;
+//        _camera.MoveRelative(glm::vec3(0, -1, 0) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
     }
 }
 
 void mb::init::_aKeyAction() {
     if (_appData.aKey) {
-        _camera.MoveRelative(glm::vec3(-1, 0, 0) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
+        _appData.cameraSpeed -= _camera.getRelX() * _appData.currentFrameTime * _appData.cameraAcceleration;
+//        _camera.MoveRelative(glm::vec3(-1, 0, 0) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
     }
 }
 
 void mb::init::_dKeyAction() {
     if (_appData.dKey) {
-        _camera.MoveRelative(glm::vec3(1, 0, 0) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
+        _appData.cameraSpeed += _camera.getRelX() * _appData.currentFrameTime * _appData.cameraAcceleration;
+//        _camera.MoveRelative(glm::vec3(1, 0, 0) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
     }
 }
 
 void mb::init::_qKeyAction() {
     if (_appData.qKey) {
-        _camera.MoveRelative(glm::vec3(0, 0, 1) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
+        _appData.cameraSpeed += _camera.getRelZ() * _appData.currentFrameTime * _appData.cameraAcceleration;
+//        _camera.MoveRelative(glm::vec3(0, 0, 1) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
     }
 }
 
 void mb::init::_eKeyAction() {
     if (_appData.eKey) {
-        _camera.MoveRelative(glm::vec3(0, 0, -1) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
+        _appData.cameraSpeed -= _camera.getRelZ() * _appData.currentFrameTime * _appData.cameraAcceleration;
+//        _camera.MoveRelative(glm::vec3(0, 0, -1) * _appData.currentFrameTime * _appData.cameraMoveSpeed);
     }
 }
 
@@ -436,6 +451,22 @@ void mb::init::_rKeyAction() {
     if (_appData.rKey) {
         _appData.rKey = false;
         _appData.wantsRecompileShaders = true;
+    }
+}
+
+void mb::init::_f11KeyAction() {
+    if (_appData.f11Key) {
+        _appData.f11Key = false;
+        bool isFullscreen = SDL_GetWindowFlags(_mainWindow) & SDL_WINDOW_FULLSCREEN;
+        SDL_SetWindowFullscreen(_mainWindow, isFullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    }
+}
+
+void mb::init::_rightMouseButtonAction() {
+    if (_appData.rightMouseButton) {
+        _appData.rightMouseButton = false;
+        _appData.relativeMode = !_appData.relativeMode;
+        SDL_SetRelativeMouseMode(_appData.relativeMode ? SDL_TRUE : SDL_FALSE);
     }
 }
 

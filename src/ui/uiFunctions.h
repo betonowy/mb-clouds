@@ -22,15 +22,21 @@ struct applicationData {
     float currentFrameTime{0.1};
 
     bool rotateCamera = false;
-    bool moveCamera = false;
+    bool relativeMode = false;
 
     glm::vec3 cameraRotation = {M_PI / 4, M_PI / 8, 0};
+    glm::vec3 cameraSpeed{};
+    float cameraSlowDownSpeed = 1;
+    float cameraAcceleration = 0.3;
+
     float cameraRotationSpeed = 1;
     float cameraMoveSpeed = 1;
 
     bool wantsRecompileShaders = false;
     bool wantsToggleFullScreen = false;
     bool wantsToggleImGui = false;
+
+    bool rightMouseButton = false;
 
     bool wKey{};
     bool sKey{};

@@ -7,6 +7,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
+camera::camera() {
+    _recalculateRelativeAxis();
+}
+
 glm::mat4 camera::GetCombined() {
     if (dirtyFullMatrix || dirtyViewMatrix || dirtyProjectionMatrix) {
         fullMatrix = GetProjection() * GetView();
@@ -33,6 +37,7 @@ void camera::SetPosition(const glm::vec3 &pos) {
 void camera::SetDirection(const glm::vec3 &dir) {
     dirtyViewMatrix = dirtyFullMatrix = true;
     lookAtVector = dir;
+    _recalculateRelativeAxis();
 }
 
 void camera::SetPositionAndLookAtPoint(const glm::vec3 &pos, const glm::vec3 &lookAt) {
@@ -64,12 +69,6 @@ void camera::SetFovAndAspectRatio(float fov, float ratio) {
 }
 
 void camera::MoveRelative(glm::vec3 vector) {
-    glm::vec3 zPlus, xPlus, yPlus;
-
-    yPlus = lookAtVector;
-    xPlus = glm::normalize(glm::cross(yPlus, glm::vec3(0, 0, 1)));
-    zPlus = glm::cross(lookAtVector, xPlus);
-
     position += xPlus * vector.x + yPlus * vector.y + zPlus * vector.z;
 }
 
@@ -81,4 +80,14 @@ void camera::RotateAbs(glm::vec3 vector) {
     lookAtVector = rotateMat * glm::vec3(0, 0, 1);
     lookAtVector = glm::normalize(lookAtVector);
     std::swap(lookAtVector.y, lookAtVector.z);
+}
+
+void camera::_recalculateRelativeAxis() {
+    yPlus = lookAtVector;
+    xPlus = glm::normalize(glm::cross(yPlus, glm::vec3(0, 0, 1)));
+    zPlus = glm::cross(lookAtVector, xPlus);
+}
+
+void camera::MoveRelativeAbs(glm::vec3 vector) {
+    position += vector;
 }
