@@ -32,6 +32,10 @@ struct applicationData {
     float cameraRotationSpeed = 1;
     float cameraMoveSpeed = 1;
 
+    int taaFrame = 0;
+    int taaMax = 20;
+    bool taaEnabled = true;
+
     bool wantsRecompileShaders = false;
     bool wantsToggleFullScreen = false;
     bool wantsToggleImGui = false;
@@ -60,6 +64,12 @@ public:
     void _initValues();
 
 private:
+
+    // actions
+
+    void _taaReset();
+
+    void _taaSet(bool value);
 
     // main menu bar
 

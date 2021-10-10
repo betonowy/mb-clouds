@@ -28,11 +28,15 @@ public:
 
     void changeDataset(std::string_view path);
 
-    const std::vector<std::string>& getAvailableVdbFiles();
+    const std::vector<std::string> &getAvailableVdbFiles();
 
     const std::vector<std::pair<std::string, std::vector<std::string>>> &getAvailableShaders();
 
     [[nodiscard]] inline dimType getSize() const { return _dataset->getHighDim() - _dataset->getLowDim(); }
+
+    inline std::size_t getMemorySize() { return _memorySize; }
+
+    void bind();
 
 private:
     std::string _vdbPath;
@@ -65,6 +69,8 @@ private:
 
     std::vector<std::pair<std::string, std::vector<std::string>>> _availableShaders;
     std::vector<std::string> _availableVdbFiles;
+
+    std::size_t _memorySize = 0;
 };
 
 

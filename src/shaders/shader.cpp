@@ -216,3 +216,17 @@ void shader::_initBindings() {
 
     bindsampler(0, "blueNoiseSampler");
 }
+
+void shader::bindTextureUnit(int tex, std::string_view name) {
+    if (tex == -1) return;
+
+    auto bindsampler = [this](GLint index, const char *name) {
+        auto glIndex = glGetUniformLocation(programID, name);
+
+        if (glIndex == -1) return;
+
+        glUniform1i(glIndex, index);
+    };
+
+    bindsampler(tex, name.data());
+}

@@ -14,7 +14,15 @@ vdbClouds::vdbClouds(std::string path)
     });
     _pushShader("Color Additive", std::initializer_list<const char *>{
             filePaths::GLSL_SCREEN_QUAD_VERT,
-            filePaths::GLSL_VDB_LATEST_FRAG
+            filePaths::GLSL_VDB_COLOR_ADD_FRAG
+    });
+    _pushShader("Secondary Sub", std::initializer_list<const char *>{
+            filePaths::GLSL_SCREEN_QUAD_VERT,
+            filePaths::GLSL_VDB_SECONDARY_SUB_FRAG
+    });
+    _pushShader("Secondary Sub V2", std::initializer_list<const char *>{
+            filePaths::GLSL_SCREEN_QUAD_VERT,
+            filePaths::GLSL_VDB_SECONDARY_SUB_V2_FRAG
     });
 
     _availableVdbFiles = {filePaths::VDB_CLOUD_HD, filePaths::VDB_CLOUD_MD, filePaths::VDB_CLOUD_LD};
@@ -85,6 +93,12 @@ void vdbClouds::_initCloudStorage() {
 
     std::cout << "Creating data structures on GPU\n";
 
+    _memorySize =
+            extract.getNodesSize() +
+            extract.getLeavesSize() +
+            extract.getRootsSize() +
+            extract.getDescriptionSize();
+
     _cloudStorage = std::make_unique<glCloudStorageType>(extract);
 }
 
@@ -127,7 +141,7 @@ void vdbClouds::recompileShaders() {
     _resetShaders();
 }
 
-void vdbClouds::_pushShader(const std::string& name, std::initializer_list<const char *> sources) {
+void vdbClouds::_pushShader(const std::string &name, std::initializer_list<const char *> sources) {
     _availableShaders.emplace_back(name, std::vector<std::string>(sources.begin(), sources.end()));
 }
 
@@ -153,4 +167,8 @@ void vdbClouds::changeDataset(std::string_view path) {
     _vdbPath = path;
     _destroyDataset();
     _resetCloudStorage();
+}
+
+void vdbClouds::bind() {
+    _cloudStorage->bind();
 }

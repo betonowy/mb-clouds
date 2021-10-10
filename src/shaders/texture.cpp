@@ -12,7 +12,7 @@
 
 #include <stb_image.h>
 
-texture::texture(std::string_view path, int index) {
+texture::texture(std::string_view path) {
     glGenTextures(1, &texID);
 
     int iX, iY, iC;
@@ -23,7 +23,6 @@ texture::texture(std::string_view path, int index) {
         imageData = stbi_load_from_memory(file.data(), int(file.size()), &iX, &iY, &iC, 4);
     }
 
-    glActiveTexture(GL_TEXTURE0 + index);
     glBindTexture(GL_TEXTURE_2D, texID);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, iX, iY, 0, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
 
@@ -39,4 +38,8 @@ texture::texture(std::string_view path, int index) {
 
 texture::~texture() {
     glDeleteTextures(1, &texID);
+}
+
+texture::TextureBinding texture::getBinding() {
+    return texture::TextureBinding(*this);
 }

@@ -12,6 +12,9 @@
 #include <ui/uiFunctions.h>
 
 #include <iostream>
+#include <pipeline/assets/pip/DefaultPipeline.h>
+#include <pipeline/assets/pip/BlurPipeline.h>
+#include <pipeline/assets/pip/DiffShaderTest.h>
 
 #ifdef _WIN32
 extern "C"
@@ -88,8 +91,6 @@ void mb::init::_initEverything() {
     _initImGui();
 
     _vdbClouds = std::make_unique<vdbClouds>(filePaths::VDB_CLOUD_HD);
-
-    _blueNoiseTexture = std::make_unique<texture>(filePaths::TEX_BLUENOISE, texIndex::texBlueNoise);
 
     _uiFunctions.setVdbCloudsPtr(_vdbClouds.get());
     _uiFunctions._initValues();
@@ -179,8 +180,8 @@ void mb::init::littleLoop() {
 }
 
 void mb::init::_beginFrame() {
-    glClearColor(0.1, 0.2, 0.4, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
+//    glClearColor(0.1, 0.2, 0.4, 1.0);
+//    glClear(GL_COLOR_BUFFER_BIT);
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame(_mainWindow);
@@ -232,8 +233,6 @@ void mb::init::_updateSceneData() {
         _sceneData.windowResolution = {x, y};
     }
 
-    int a = 0;
-
     for (auto &n : _sceneData.randomData) {
         n = _uniformDist(_random);
     }
@@ -251,6 +250,11 @@ void mb::init::_updateSceneData() {
     _sceneData.primaryRayLength = std::max(_sceneData.primaryRayLength, 0.001f);
     _sceneData.secondaryRayLength = std::max(_sceneData.secondaryRayLength, 0.001f);
     _sceneData.sunDir /= glm::length(_sceneData.sunDir);
+
+    _sceneData.alphaBlendIn = 1.0f / (_appData.taaFrame + 1.0f);
+    if (_appData.taaFrame < _appData.taaMax) {
+        _appData.taaFrame += (_appData.taaEnabled) ? 1 : 0;
+    }
 
     _sceneData.update();
 }
@@ -270,7 +274,17 @@ void mb::init::_userInterface() {
 }
 
 void mb::init::_render() {
-    _vdbClouds->render();
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+
+    if (_pipeline) {
+        _pipeline->resize(_sceneData.windowResolution);
+        _vdbClouds->bind();
+        _pipeline->execute();
+    } else {
+        _pipeline = std::make_shared<DefaultPipeline>();
+    }
 }
 
 void mb::init::_processEvents() {
@@ -374,7 +388,8 @@ void mb::init::_rightMouseButtonHandle(bool value) {
 
 void mb::init::_cameraHandle() {
     _sceneData.cameraPosition += _appData.cameraSpeed * _appData.currentFrameTime;
-    _appData.cameraSpeed -= _appData.cameraSpeed * std::min(_appData.cameraSlowDownSpeed * _appData.currentFrameTime, 0.99f);
+    _appData.cameraSpeed -=
+            _appData.cameraSpeed * std::min(_appData.cameraSlowDownSpeed * _appData.currentFrameTime, 0.99f);
 
     _camera.SetFovAndAspectRatio(_sceneData.fov, _sceneData.aspectRatio);
     _camera.SetPositionAndDirection(_sceneData.cameraPosition, _sceneData.cameraLookDir);
@@ -395,7 +410,7 @@ void mb::init::_cameraHandle() {
     else if (vec.z < M_PI) vec.z += 2 * M_PI;
 }
 
-void mb::init::_mouseMotionHandle(glm::vec2 mAbs, glm::vec2 mRel, glm::vec2 pAbs, glm::vec2 pRel) {
+void mb::init::_mouseMotionHandle([[maybe_unused]] glm::vec2 mAbs, glm::vec2 mRel, glm::vec2 pAbs, glm::vec2 pRel) {
     if (_appData.rotateCamera || _appData.relativeMode) {
         if (_appData.relativeMode) {
             _appData.cameraRotation += glm::vec3(-pRel.x, pRel.y, 0) / 500.0f;
@@ -452,6 +467,7 @@ void mb::init::_rKeyAction() {
     if (_appData.rKey) {
         _appData.rKey = false;
         _appData.wantsRecompileShaders = true;
+        _appData.taaFrame = 0;
     }
 }
 
@@ -475,5 +491,6 @@ void mb::init::_scheduledEvents() {
     if (_appData.wantsRecompileShaders) {
         _appData.wantsRecompileShaders = false;
         _vdbClouds->recompileShaders();
+        _pipeline.reset();
     }
 }

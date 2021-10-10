@@ -12,9 +12,18 @@ namespace filePaths {
     static constexpr const char* VDB_CLOUD_MD = "../res/vdb/cloud-md.vdb";
     static constexpr const char* VDB_CLOUD_LD = "../res/vdb/cloud-ld.vdb";
 
-    static constexpr const char* GLSL_VDB_LATEST_FRAG = "../res/shaders/vdbSimpleColorAdditive.frag";
+    static constexpr const char* GLSL_VDB_COLOR_ADD_FRAG = "../res/shaders/vdbSimpleColorAdditive.frag";
+    static constexpr const char* GLSL_VDB_SECONDARY_SUB_FRAG = "../res/shaders/vdbSecondaryRaySubtract.frag";
+    static constexpr const char* GLSL_VDB_SECONDARY_SUB_V2_FRAG = "../res/shaders/vdbSecondaryRaySubtract-v2.frag";
     static constexpr const char* GLSL_VDB_DEBUG_AABB_FRAG = "../res/shaders/vdbDebugAABB.frag";
     static constexpr const char* GLSL_SCREEN_QUAD_VERT = "../res/shaders/screenQuad.vert";
+    static constexpr const char* GLSL_POST_PASS_FRAG = "../res/shaders/postPass.frag";
+    static constexpr const char* GLSL_POST_PASS_FOR_BLUR_FRAG = "../res/shaders/postPassForBlur.frag";
+    static constexpr const char* GLSL_BACKGROUND_FRAG = "../res/shaders/background.frag";
+    static constexpr const char* GLSL_BLUR_HORIZONTAL_FRAG = "../res/shaders/blurHorizontal.frag";
+    static constexpr const char* GLSL_BLUR_VERTICAL_FRAG = "../res/shaders/blurVertical.frag";
+    static constexpr const char* GLSL_COPY_FRAG = "../res/shaders/copy.frag";
+    static constexpr const char* GLSL_ABS_DIFF_FRAG = "../res/shaders/absDiff.frag";
 
     static constexpr const char* GLSL_FRAG_SUFFIX = ".frag";
     static constexpr const char* GLSL_VERT_SUFFIX = ".vert";
@@ -33,7 +42,7 @@ namespace bindings {
 }
 
 namespace texIndex {
-    static constexpr GLint texBlueNoise = 0;
+    static constexpr GLint texBlueNoise = 15;
 }
 
 namespace ui {

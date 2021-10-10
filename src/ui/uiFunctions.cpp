@@ -101,6 +101,8 @@ void uiFunctions::_uiSceneDataWindow() {
             ImGui::EndCombo();
         }
 
+        ImGui::Text("Cloud memory size: %f MiB", _vdbCloudsPtr->getMemorySize() / 1024. / 1024.);
+
         if (ImGui::BeginCombo("Current shader", currentShaderStr.c_str())) {
 
             for (auto &available : _vdbCloudsPtr->getAvailableShaders()) {
@@ -118,17 +120,37 @@ void uiFunctions::_uiSceneDataWindow() {
         ImGui::InputFloat("VDB Scale", &_sceneDataPtr->vdbScale);
 
         ImGui::DragFloat("VDB Density", &_sceneDataPtr->vdbDensityMultiplier,
-                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+                         0.5f, 0.0f, 10000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
         ImGui::DragFloat("VDB Background", &_sceneDataPtr->backgroundDensity,
                          0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
         ImGui::DragFloat("Ray Primary step length", &_sceneDataPtr->primaryRayLength,
                          0.0004f, 0.001f, 0.1f, "%.3f", ImGuiSliderFlags_Logarithmic);
-        ImGui::DragFloat("Ray Primary step exp", &_sceneDataPtr->primaryRayLengthExp,
-                         0.001f, 1.0f, 1.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
+//        ImGui::DragFloat("Ray Primary step exp", &_sceneDataPtr->primaryRayLengthExp,
+//                         0.001f, 1.0f, 1.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
         ImGui::DragFloat("Ray secondary step length", &_sceneDataPtr->secondaryRayLength,
                          0.0004f, 0.001f, 0.1f, "%.3f", ImGuiSliderFlags_Logarithmic);
-        ImGui::DragFloat("Ray secondary step exp", &_sceneDataPtr->secondaryRayLengthExp,
-                         0.001f, 1.0f, 1.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
+//        ImGui::DragFloat("Ray secondary step exp", &_sceneDataPtr->secondaryRayLengthExp,
+//                         0.001f, 1.0f, 1.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        if (ImGui::Button("TAA reset")) {
+            _taaReset();
+        }
+
+        ImGui::DragFloat("Cloud height", &_sceneDataPtr->cloudHeight,
+                         0.001, 0.0f, 1.0f);
+        ImGui::DragFloat("Cloud height sensitivity", &_sceneDataPtr->cloudHeightSensitivity,
+                         0.001, 0.0f, 1.0f);
+        ImGui::DragFloat("Density Multiplier", &_sceneDataPtr->densityMultiplier,
+                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        ImGui::DragFloat("Ambient multiplier", &_sceneDataPtr->ambientMultiplier,
+                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        ImGui::DragFloat("Intensity multiplier", &_sceneDataPtr->radianceMultiplier,
+                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderInt("Blur radius", &_sceneDataPtr->gaussianRadius, 0, 127);
+
+        ImGui::Checkbox("TAA enabled", &_appData->taaEnabled);
+
+        ImGui::InputInt("TAA max", &_appData->taaMax);
+
         ImGui::Separator();
 
         ImGui::Text("Background settings");
@@ -190,4 +212,13 @@ void uiFunctions::_initValues() {
     };
 
     loadStr(_strVdbShaderOptions, filePaths::STRING_VDB_SHADER_OPTIONS);
+}
+
+void uiFunctions::_taaSet(bool value) {
+    _appData->taaEnabled = value;
+    if (!value) _taaReset();
+}
+
+void uiFunctions::_taaReset() {
+    _appData->taaFrame = 0;
 }

@@ -22,6 +22,8 @@ public:
 
     void use() const;
 
+    void bindTextureUnit(int tex, std::string_view name);
+
 private:
     template<class iterator>
     void _compileSources(iterator begin, iterator end);

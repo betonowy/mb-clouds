@@ -13,6 +13,7 @@
 #include <ui/uiFunctions.h>
 #include <world/camera.h>
 #include <shaders/texture.h>
+#include <pipeline/Pipeline.h>
 
 #include <memory>
 #include <random>
@@ -120,15 +121,13 @@ namespace mb {
 
         uiFunctions _uiFunctions;
 
+        std::shared_ptr<Pipeline> _pipeline;
+
         camera _camera;
 
         // vdbClouds
 
         std::unique_ptr<vdbClouds> _vdbClouds;
-
-        // textures
-
-        std::unique_ptr<texture> _blueNoiseTexture;
 
         // random engine
 
