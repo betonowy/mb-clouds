@@ -283,7 +283,7 @@ void mb::init::_render() {
         _vdbClouds->bind();
         _pipeline->execute();
     } else {
-        _pipeline = std::make_shared<DefaultPipeline>();
+        _pipeline = std::make_shared<BlurPipeline>();
     }
 }
 
