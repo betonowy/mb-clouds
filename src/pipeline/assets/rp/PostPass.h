@@ -6,6 +6,7 @@
 #define MB_CLOUDS_POSTPASS_H
 
 #include <pipeline/RenderPass.h>
+#include <shaders/texture.h>
 
 class PostPass : public RenderPass {
 public:
@@ -19,6 +20,8 @@ private:
     std::string _backgroundTargetName;
     std::string _cloudTargetName;
     bool _hasCustomFb;
+
+    texture _blueNoiseTex;
 };
 
 

@@ -446,6 +446,10 @@ vec3 SecondaryRayEnergyFunction(in float integral, in float dotVal, in vec3 sunC
 //
 //}
 
+float LorenzMie(in float dotVal, in float p) {
+    return (1 * p) / 2 * pow((1 + dotVal) / 2, p) / (4 * 3.141593);
+}
+
 float SecondaryRay(in vec3 ro, in float localDensity, in float phaseFunc, in float dotVal, float cloudHeight) {
     const vec3 rd = u_SceneData.sunDir;
     const float stepL = u_SceneData.secondaryRayLength;
@@ -466,10 +470,14 @@ float SecondaryRay(in vec3 ro, in float localDensity, in float phaseFunc, in flo
     integral += firstIntegral;
     integral *= u_SceneData.densityMultiplier;
 
-    float scatter = mix(0.008, 1.0, smoothstep(0.96, 0.0, dotVal));
-    float beersLaw= exp(-stepL * integral) + 0.5 * scatter * exp(-0.1 * stepL * integral) + scatter * 0.4 * exp(-0.02 * stepL * integral);
+    float depthParam = 1 / (integral * 1);
 
-    return beersLaw * phaseFunc * mix(0.05 + 1.5 * pow(min(1.0, localDensity * 8.5), 0.3 + 5.5 * cloudHeight), 1.0, clamp(integral * 0.4, 0.0, 1.0));
+    float scatter = mix(0.008, 1.0, smoothstep(0.96, 0.0, 0.4));
+    float beersLaw = exp(-stepL * integral) + 0.5 * scatter * exp(-0.1 * stepL * integral) + scatter * 0.4 * exp(-0.02 * stepL * integral);
+
+    float light = beersLaw * phaseFunc * mix(0.05 + 1.5 * pow(min(1.0, localDensity * 8.5), 0.3 + 5.5 * cloudHeight), 1.0, clamp(integral * 0.4, 0.0, 1.0));
+    return LorenzMie(dotVal, depthParam) * 1 + light;
+//    return light;
 }
 
 float FakeLM(float x, float density) {
@@ -570,7 +578,7 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
         float cloudHeight = u_SceneData.cloudHeight + ro.z * u_SceneData.cloudHeightSensitivity;
 
         if (localDensity > 0.0f) {
-            float intensity = SecondaryRay(ro, localDensity, phaseFunc, 0.4, cloudHeight);
+            float intensity = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
             intensity *= u_SceneData.radianceMultiplier;
 
             vec3 ambient = (0.5 + 0.6 * cloudHeight) * vec3(0.2, 0.5, 1.0) * 6.5 + vec3(0.8) * max(0.0, 1.0 - 2.0 * cloudHeight);

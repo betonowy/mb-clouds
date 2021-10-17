@@ -111,7 +111,7 @@ vec4 SampleBlueNoiseLinear(in vec2 pos) {
 }
 
 vec4 NoiseShaping() {
-    const float noiseValue = 1.0f / 256;
+    const float noiseValue = 2.0f / 256;
     const float offset = 0.5f * noiseValue;
     return vec4(SampleBlueNoise(ivec2(gl_FragCoord.xy)).rgb * noiseValue, 0) - offset;
 }

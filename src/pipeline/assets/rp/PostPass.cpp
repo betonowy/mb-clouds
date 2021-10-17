@@ -16,7 +16,8 @@ PostPass::PostPass(std::string backgroundTargetName, std::string cloudTargetName
                      }),
           _backgroundTargetName(std::move(backgroundTargetName)),
           _cloudTargetName(std::move(cloudTargetName)),
-          _hasCustomFb(false) {}
+          _hasCustomFb(false),
+          _blueNoiseTex(filePaths::TEX_BLUENOISE) {}
 
 PostPass::PostPass(std::string backgroundTargetName, std::string cloudTargetName, const std::string &output)
         : RenderPass({
@@ -28,7 +29,8 @@ PostPass::PostPass(std::string backgroundTargetName, std::string cloudTargetName
                      }),
           _backgroundTargetName(std::move(backgroundTargetName)),
           _cloudTargetName(std::move(cloudTargetName)),
-          _hasCustomFb(false) {
+          _hasCustomFb(true),
+          _blueNoiseTex(filePaths::TEX_BLUENOISE) {
     _frameBuffer.attach(GL_RGBA, GL_RGBA16F, GL_FLOAT, GL_COLOR_ATTACHMENT0, output);
     _frameBuffer.complete();
 }
@@ -39,6 +41,9 @@ void PostPass::execute() {
 
     auto bindingBackground = texture::TextureBinding(getResponse(_backgroundTargetName));
     BindSampler(bindingBackground.getBindingPoint(), "fbBackgroundColor");
+
+    const auto blueNoiseTexBinding = _blueNoiseTex.getBinding();
+    BindSampler(blueNoiseTexBinding.getBindingPoint(), "blueNoiseSampler");
 
     if (_hasCustomFb) {
         RenderQuad();
