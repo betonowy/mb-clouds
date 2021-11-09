@@ -104,6 +104,8 @@ public:
         uint32_t _padding_1{};
 
         sourceLeafDataType data;
+
+        uint32_t _padding_2[1024];
     };
 
     // types end

@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include "tests/vdbProcessingTest.h"
 #include "tests/vdbDataTest.h"
 #include "tests/vdbDataExtractTest.h"
 

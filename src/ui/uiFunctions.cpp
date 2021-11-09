@@ -5,6 +5,8 @@
 #include "uiFunctions.h"
 
 #include <clouds/vdbClouds.h>
+#include <pipeline/Pipeline.h>
+#include <pipeline/PipeMan.h>
 #include <util/file/binaryFile.h>
 
 #include <SDL_video.h>
@@ -17,6 +19,7 @@ uiFunctions::uiFunctions(sceneData *sceneDataPtr, applicationData *appData)
 void uiFunctions::doUi() {
     _uiMainMenuBar();
     _uiSceneDataWindow();
+    _cacheProcessing();
 }
 
 void uiFunctions::_uiMainMenuBar() {
@@ -43,6 +46,10 @@ void uiFunctions::_uiMainMenuBarFile() {
     if (ImGui::BeginMenu("File")) {
         if (ImGui::MenuItem("Recompile shaders", "R")) {
             _appData->wantsRecompileShaders = true;
+        }
+
+        if (ImGui::MenuItem("Process cached dataset")) {
+            _appData->cacheProcessing = processingStatus::START;
         }
 
         if (ImGui::MenuItem("Exit application", "ALT+F4")) {
@@ -103,13 +110,13 @@ void uiFunctions::_uiSceneDataWindow() {
 
         ImGui::Text("Cloud memory size: %f MiB", _vdbCloudsPtr->getMemorySize() / 1024. / 1024.);
 
-        if (ImGui::BeginCombo("Current shader", currentShaderStr.c_str())) {
+        if (ImGui::BeginCombo("Current shader", currentPipelineStr.c_str())) {
 
-            for (auto &available : _vdbCloudsPtr->getAvailableShaders()) {
-                if (ImGui::Selectable(available.first.c_str())) {
-                    _vdbCloudsPtr->recompileShaders(available.first);
-                    currentShaderStr = available.first;
-                };
+            for (auto &[name, maker] : _pipeMan.getMakers()) {
+                if (ImGui::Selectable(name.c_str())) {
+                    *_pipelinePtr = maker();
+                    currentPipelineStr = name;
+                }
             }
 
             ImGui::EndCombo();
@@ -200,8 +207,8 @@ void uiFunctions::_initValues() {
     _vdbCloudsPtr->changeDataset(currentVdbFileStr);
     currentVdbFileStr = currentVdbFileStr.substr(currentVdbFileStr.find_last_of('/') + 1);
 
-    currentShaderStr = _vdbCloudsPtr->getAvailableShaders().front().first;
-    _vdbCloudsPtr->recompileShaders(currentShaderStr);
+//    currentPipelineStr = _vdbCloudsPtr->getAvailableShaders().front().first;
+//    _vdbCloudsPtr->recompileShaders(currentPipelineStr);
 
     // strings
 
@@ -221,4 +228,27 @@ void uiFunctions::_taaSet(bool value) {
 
 void uiFunctions::_taaReset() {
     _appData->taaFrame = 0;
+}
+
+void uiFunctions::setPipelinePtr(std::shared_ptr<Pipeline> pipelinePtr) {
+    _pipelinePtr = std::move(pipelinePtr);
+}
+
+void uiFunctions::_cacheProcessing() {
+    if (_appData->cacheProcessing == processingStatus::RUNNING) {
+        ImGui::SetNextWindowPos(ImVec2(float(_sceneDataPtr->windowResolution.x) / 2 - 150, float(_sceneDataPtr->windowResolution.y) / 2 - 35));
+        ImGui::SetNextWindowSize(ImVec2(300, 70));
+
+        if (!ImGui::Begin("Processing status", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar)) {
+            ImGui::End();
+            return;
+        }
+        const auto &info = _appData->cacheProcessingStatus;
+
+        ImGui::Text("Processed voxels: %llu out of %llu", info.processed, info.total);
+        ImGui::Text("Active jobs: %llu", info.active);
+        ImGui::Text("Progress %.1f%%", _appData->cacheProcessingStatus.processedPercentage);
+
+        ImGui::End();
+    }
 }

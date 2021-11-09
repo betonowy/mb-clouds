@@ -7,6 +7,9 @@
 
 #include <glm/glm.hpp>
 
+#include "util/misc.h"
+
+#include <cassert>
 #include <algorithm>
 #include <array>
 #include <bitset>
@@ -81,6 +84,15 @@ public:
     dimType voxelPos{};
 };
 
+template<int rootLevel, int nodeLevel, int leafLevel, typename valueType>
+struct vdbValueAccessor : public vdbAccessor<rootLevel, nodeLevel, leafLevel> {
+    explicit vdbValueAccessor(dimType pos, valueType *valueRef)
+            : vdbAccessor<rootLevel, nodeLevel, leafLevel>(pos),
+              value(valueRef) {}
+
+    valueType *value;
+};
+
 template<typename valueType, int level>
 class vdbLeaf {
 public:
@@ -97,9 +109,9 @@ public:
 
     [[nodiscard]] uint32_t countOnValues() const { return _data.bitset.count(); };
 
-    [[nodiscard]] const dataStruct &getData() const {
-        return _data;
-    }
+    [[nodiscard]] const dataStruct &getData() const { return _data; }
+
+    [[nodiscard]] dataStruct &getData() { return _data; }
 
     [[nodiscard]] dimType getLowDim() const { return _lowDim; }
 
@@ -150,9 +162,21 @@ public:
         uint32_t index = pos[0] | pos[1] << level | pos[2] << level * 2;
 
         assert(index < ARRAY_SIZE);
-        assert(_data.bitset[index]);
+//        assert(_data.bitset[index]);
 
         return _data.values[index];
+    }
+
+    [[nodiscard]] valueType *getRef(dimType pos) {
+        assert(pos[0] >= 0 && pos[0] < dimSize);
+        assert(pos[1] >= 0 && pos[1] < dimSize);
+        assert(pos[2] >= 0 && pos[2] < dimSize);
+
+        uint32_t index = pos[0] | pos[1] << level | pos[2] << level * 2;
+
+        assert(index < ARRAY_SIZE);
+
+        return _data.bitset[index] ? &_data.values[index] : nullptr;
     }
 
     [[nodiscard]] bool isEmpty() const { return _data.bitset.none(); }
@@ -334,6 +358,24 @@ public:
         return leaves[leafIndex].getValue(accessor.voxelPos);
     }
 
+    valueType *getValueRef(dimType pos) {
+        accessorType accessor(pos);
+
+        uint32_t rootIndex = _findRoot(accessor.rootPos);
+
+        if (rootIndex == vdbBadIndex) return nullptr;
+
+        uint32_t nodeIndex = _findNode(accessor.nodePos, rootIndex);
+
+        if (nodeIndex == vdbBadIndex) return nullptr;
+
+        uint32_t leafIndex = _findLeaf(accessor.leafPos, nodeIndex);
+
+        if (leafIndex == vdbBadIndex) return nullptr;
+
+        return leaves[leafIndex].getRef(accessor.voxelPos);
+    }
+
 private:
     [[nodiscard]] uint32_t _findRoot(dimType pos) const {
         for (uint32_t i = 0; i < roots.size(); i++) {
@@ -499,6 +541,31 @@ private:
 
         leaves = newLeaves;
     }
+
+public:
+    std::vector<vdbValueAccessor<rootLevel, nodeLevel, leafLevel, valueType>> listVoxels() {
+        std::vector<vdbValueAccessor<rootLevel, nodeLevel, leafLevel, valueType>> vec;
+
+        auto lowDim = getLowDim();
+        auto highDim = getHighDim();
+
+        for (int x{lowDim.x}; x <= highDim.x; x++) {
+            for (int y{lowDim.y}; y <= highDim.y; y++) {
+                for (int z{lowDim.z}; z <= highDim.z; z++) {
+                    dimType pos{x, y, z};
+                    auto val = getValueRef(pos);
+
+                    if (val) {
+                        vec.emplace_back(pos, val);
+                    }
+                }
+            }
+        }
+
+        return vec;
+    }
+
+private:
 
     std::vector<leafType> leaves;
     std::vector<nodeType> nodes;

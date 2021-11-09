@@ -8,8 +8,17 @@
 #include <shaders/sceneData.h>
 #include <imgui.h>
 #include <string>
+#include <pipeline/PipeMan.h>
+#include <clouds/vdbIntegrationStatus.h>
 
 class vdbClouds;
+class Pipeline;
+
+enum class processingStatus {
+    START,
+    RUNNING,
+    FINISHED,
+};
 
 struct applicationData {
     bool isRunning = true;
@@ -33,7 +42,7 @@ struct applicationData {
     float cameraMoveSpeed = 1;
 
     int taaFrame = 0;
-    int taaMax = 20;
+    int taaMax = 27;
     bool taaEnabled = true;
 
     bool wantsRecompileShaders = false;
@@ -41,6 +50,9 @@ struct applicationData {
     bool wantsToggleImGui = false;
 
     bool rightMouseButton = false;
+
+    processingStatus cacheProcessing{processingStatus::FINISHED};
+    integrationStatus cacheProcessingStatus{};
 
     bool wKey{};
     bool sKey{};
@@ -60,6 +72,8 @@ public:
     void doUi();
 
     void setVdbCloudsPtr(vdbClouds *vdbCloudsPtr);
+
+    void setPipelinePtr(std::shared_ptr<Pipeline> pipelinePtr);
 
     void _initValues();
 
@@ -87,18 +101,25 @@ private:
 
     void _uiSceneDataWindow();
 
+    void _cacheProcessing();
+
     sceneData *_sceneDataPtr;
     applicationData *_appData;
     vdbClouds *_vdbCloudsPtr{};
+    std::shared_ptr<Pipeline> _pipelinePtr{};
 
     // variables
 
-    std::string currentShaderStr;
+    std::string currentPipelineStr;
     std::string currentVdbFileStr;
 
     // strings
 
     std::string _strVdbShaderOptions;
+
+    // other
+
+    PipeMan _pipeMan;
 };
 
 #endif //MB_CLOUDS_UIFUNCTIONS_H

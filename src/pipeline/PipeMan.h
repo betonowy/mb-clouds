@@ -17,7 +17,7 @@ public:
     [[nodiscard]] const auto &getMakers() const& { return _pipelineMakers; }
 
 private:
-    std::vector<std::pair<std::string, std::function<std::shared_ptr<Pipeline>()>>> _pipelineMakers;
+    std::vector<std::pair<std::string, std::function<Pipeline()>>> _pipelineMakers;
 };
 
 

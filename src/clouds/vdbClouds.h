@@ -6,16 +6,29 @@
 #define MB_CLOUDS_VDBCLOUDS_H
 
 #include <shaders/cloudStorage.h>
+
 #include <tree/vdbDataExtract.h>
 #include <shaders/shader.h>
+#include "vdbIntegrationStatus.h"
 
 #include <memory>
 
+struct cachedVoxelData {
+    float density;
+    float integral;
+};
+
+class vdbOfflineIntegrator;
+
 class vdbClouds {
+public:
     using glCloudStorageType = cloudStorage<float, 5, 4, 3>;
     using vdbGlType = vdbGl<float, 5, 4, 3>;
     using vdbDatasetType = vdbDataset<float, 5, 4, 3>;
-public:
+    using cachedCloudStorageType = cloudStorage<cachedVoxelData, 5, 4, 3>;
+    using cachedGlType = vdbGl<cachedVoxelData, 5, 4, 3>;
+    using cachedDatasetType = vdbDataset<cachedVoxelData, 5, 4, 3>;
+    
     explicit vdbClouds(std::string path);
 
     ~vdbClouds();
@@ -37,6 +50,12 @@ public:
     inline std::size_t getMemorySize() { return _memorySize; }
 
     void bind();
+
+    integrationStatus getProcessingStatus();
+
+    void launchProcessing();
+
+    void finalizeProcessing();
 
 private:
     std::string _vdbPath;
@@ -63,6 +82,11 @@ private:
 
     std::unique_ptr<vdbDatasetType> _dataset;
     std::unique_ptr<glCloudStorageType> _cloudStorage;
+
+    std::unique_ptr<cachedDatasetType> _cachedDataset;
+    std::unique_ptr<cachedCloudStorageType> _cachedCloudStorage;
+
+    std::unique_ptr<vdbOfflineIntegrator> _integrator;
 
     std::string lastShader;
     std::unique_ptr<shader> _cloudShader;

@@ -6,6 +6,7 @@
 #define MB_CLOUDS_SCENEDATA_H
 
 #include <glm/glm.hpp>
+#include <random>
 
 struct sceneData {
     glm::vec3 cameraPosition{1.1, -1.1, 0.4};
@@ -77,13 +78,20 @@ struct sceneData {
 
     float gaussian[32 * 4];
 
-    int32_t gaussianRadius = 3;
+    int32_t gaussianRadius = 0;
+    int32_t ms_pointCount = 32;
+    int32_t ms_sphereSize = 1;
+    int32_t ms_;
+
+    glm::vec4 ms_samplePoints[256];
 
     void update();
 
     void reset();
 
     void calculateGaussian(int radius);
+
+    void calculateMsPoints(std::uniform_real_distribution<float>& dist, std::ranlux24_base& eRand);
 };
 
 #endif //MB_CLOUDS_SCENEDATA_H

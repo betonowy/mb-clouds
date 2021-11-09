@@ -16,8 +16,26 @@ CloudPass::CloudPass(const std::string &output)
     _frameBuffer.complete();
 }
 
+CloudPass::CloudPass(const std::string &output, const std::string &noiseLayer)
+        : RenderPass({
+                             filePaths::GLSL_SCREEN_QUAD_VERT,
+                             filePaths::GLSL_VDB_SECONDARY_SUB_V3_FRAG
+                     }, {{noiseLayer}}),
+          _blueNoiseTex(filePaths::TEX_BLUENOISE),
+          _noiseLayerInput(noiseLayer) {
+    _frameBuffer.attach(GL_RGBA, GL_RGBA16F, GL_FLOAT, GL_COLOR_ATTACHMENT0, output);
+    _frameBuffer.complete();
+}
+
 void CloudPass::execute() {
     const auto blueNoiseTexBinding = _blueNoiseTex.getBinding();
     BindSampler(blueNoiseTexBinding.getBindingPoint(), "blueNoiseSampler");
-    RenderQuad(CLEAR);
+
+    if (_noiseLayerInput) {
+        const auto noiseLayerBinding = texture::TextureBinding(getResponse(*_noiseLayerInput));
+        BindSampler(noiseLayerBinding.getBindingPoint(), "adaptiveNoiseSampler");
+        RenderQuad(CLEAR);
+    } else {
+        RenderQuad(CLEAR);
+    }
 }

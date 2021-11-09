@@ -230,6 +230,14 @@ TEST(vdbData, vdbDatasetFillTest) {
 
     auto getT2 = clock::now();
 
+    auto voxels = dataset.listVoxels();
+    dimType lastPos{};
+
+    for (auto &voxel : voxels) {
+        const auto pos = voxel.decodePosition();
+        ASSERT_EQ(dataset.getValue(pos), *voxel.value);
+    }
+
     ASSERT_EQ(dataset.countRoots(), finalRoots);
     ASSERT_EQ(dataset.countNodes(), finalNodes);
     ASSERT_EQ(dataset.countLeaves(), finalLeaves);

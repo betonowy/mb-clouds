@@ -13,8 +13,12 @@ public:
     void execute() override;
 
     explicit CloudPass(const std::string &output);
+
+    CloudPass(const std::string &output, const std::string &noiseLayer);
 private:
     texture _blueNoiseTex;
+
+    std::optional<std::string> _noiseLayerInput;
 };
 
 

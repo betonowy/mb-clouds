@@ -15,10 +15,10 @@ namespace filePaths {
     static constexpr const char* GLSL_VDB_COLOR_ADD_FRAG = "../res/shaders/vdbSimpleColorAdditive.frag";
     static constexpr const char* GLSL_VDB_SECONDARY_SUB_FRAG = "../res/shaders/vdbSecondaryRaySubtract.frag";
     static constexpr const char* GLSL_VDB_SECONDARY_SUB_V2_FRAG = "../res/shaders/vdbSecondaryRaySubtract-v2.frag";
+    static constexpr const char* GLSL_VDB_SECONDARY_SUB_V3_FRAG = "../res/shaders/vdbSecondaryRaySubtract-v3.frag";
     static constexpr const char* GLSL_VDB_DEBUG_AABB_FRAG = "../res/shaders/vdbDebugAABB.frag";
     static constexpr const char* GLSL_SCREEN_QUAD_VERT = "../res/shaders/screenQuad.vert";
     static constexpr const char* GLSL_POST_PASS_FRAG = "../res/shaders/postPass.frag";
-    static constexpr const char* GLSL_POST_PASS_FOR_BLUR_FRAG = "../res/shaders/postPassForBlur.frag";
     static constexpr const char* GLSL_BACKGROUND_FRAG = "../res/shaders/background.frag";
     static constexpr const char* GLSL_BLUR_HORIZONTAL_FRAG = "../res/shaders/blurHorizontal.frag";
     static constexpr const char* GLSL_BLUR_VERTICAL_FRAG = "../res/shaders/blurVertical.frag";
@@ -39,6 +39,10 @@ namespace bindings {
     static constexpr GLuint vdbNodes = 2;
     static constexpr GLuint vdbLeaves = 3;
     static constexpr GLuint sceneData = 4;
+    static constexpr GLuint cachedDesc = 5;
+    static constexpr GLuint cachedRoots = 6;
+    static constexpr GLuint cachedNodes = 7;
+    static constexpr GLuint cachedLeaves = 8;
 }
 
 namespace texIndex {

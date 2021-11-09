@@ -14,9 +14,11 @@
 #include <world/camera.h>
 #include <shaders/texture.h>
 #include <pipeline/Pipeline.h>
+#include <pipeline/PipeMan.h>
 
 #include <memory>
 #include <random>
+#include <pipeline/assets/pip/EmptyPipeline.h>
 
 class vdbClouds;
 
@@ -64,6 +66,8 @@ namespace mb {
         void _processEvents();
 
         void _cameraHandle();
+
+        void _processing();
 
         // events
 
@@ -121,7 +125,7 @@ namespace mb {
 
         uiFunctions _uiFunctions;
 
-        std::shared_ptr<Pipeline> _pipeline;
+        std::shared_ptr<Pipeline> _pipeline{std::make_shared<EmptyPipeline>()};
 
         camera _camera;
 

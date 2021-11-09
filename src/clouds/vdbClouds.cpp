@@ -4,6 +4,8 @@
 
 #include "vdbClouds.h"
 
+#include "vdbOfflineIntegrator.h"
+
 #include <openvdb/openvdb.h>
 
 vdbClouds::vdbClouds(std::string path)
@@ -38,6 +40,7 @@ void vdbClouds::_initDataset() {
     if (_dataset) return;
 
     _dataset = std::make_unique<vdbDatasetType>();
+    _cachedDataset = std::make_unique<cachedDatasetType>();
 
     {
         openvdb::initialize();
@@ -63,6 +66,7 @@ void vdbClouds::_initDataset() {
 
             // convert between blender/opengl coordinate system
             _dataset->setValue({-pos.x, pos.z, pos.y}, value);
+            _cachedDataset->setValue({-pos.x, pos.z, pos.y}, {value, 0});
 
             ++valueIter;
         }
@@ -83,13 +87,13 @@ void vdbClouds::_resetDataset() {
 }
 
 void vdbClouds::_initCloudStorage() {
-    if (_cloudStorage) return;
+//    if (_cloudStorage) return;
 
     _initDataset();
 
     std::cout << "Extracting GPU usable data from dataset\n";
 
-    vdbGlType extract(*_dataset);
+    cachedGlType extract(*_cachedDataset);
 
     std::cout << "Creating data structures on GPU\n";
 
@@ -99,7 +103,7 @@ void vdbClouds::_initCloudStorage() {
             extract.getRootsSize() +
             extract.getDescriptionSize();
 
-    _cloudStorage = std::make_unique<glCloudStorageType>(extract);
+    _cachedCloudStorage = std::make_unique<cachedCloudStorageType>(extract);
 }
 
 void vdbClouds::_destroyCloudStorage() {
@@ -170,5 +174,20 @@ void vdbClouds::changeDataset(std::string_view path) {
 }
 
 void vdbClouds::bind() {
-    _cloudStorage->bind();
+    _cachedCloudStorage->bind();
+}
+
+void vdbClouds::launchProcessing() {
+    _integrator = std::make_unique<vdbOfflineIntegrator>(std::move(_cachedDataset));
+    _integrator->dispatch();
+}
+
+integrationStatus vdbClouds::getProcessingStatus() {
+    return _integrator ? _integrator->getStatus() : integrationStatus{};
+}
+
+void vdbClouds::finalizeProcessing() {
+    _cachedDataset = _integrator->returnData();
+    _integrator.reset();
+    _initCloudStorage();
 }

@@ -10,6 +10,8 @@
 class DiffShaderTest : public Pipeline {
 public:
     DiffShaderTest();
+private:
+    bool _hasCustomOutput;
 };
 
 

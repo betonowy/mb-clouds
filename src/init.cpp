@@ -92,6 +92,7 @@ void mb::init::_initEverything() {
 
     _vdbClouds = std::make_unique<vdbClouds>(filePaths::VDB_CLOUD_HD);
 
+    _uiFunctions.setPipelinePtr(_pipeline);
     _uiFunctions.setVdbCloudsPtr(_vdbClouds.get());
     _uiFunctions._initValues();
 
@@ -174,6 +175,7 @@ void mb::init::littleLoop() {
         _scheduledEvents();
         _updateSceneData();
         _render();
+        _processing();
         _endFrame();
         _windowTitleFps();
     }
@@ -237,6 +239,8 @@ void mb::init::_updateSceneData() {
         n = _uniformDist(_random);
     }
 
+    _sceneData.calculateMsPoints(_uniformDist, _random);
+
     dimType cloudSize = _vdbClouds->getSize();
     int maxCoord = 0;
     for (int i = 0; i < dimType::length(); i++) {
@@ -251,7 +255,7 @@ void mb::init::_updateSceneData() {
     _sceneData.secondaryRayLength = std::max(_sceneData.secondaryRayLength, 0.001f);
     _sceneData.sunDir /= glm::length(_sceneData.sunDir);
 
-    _sceneData.alphaBlendIn = 1.0f / (_appData.taaFrame + 1.0f);
+    _sceneData.alphaBlendIn = sqrt(1.0f / (_appData.taaFrame + 1.0f));
     if (_appData.taaFrame < _appData.taaMax) {
         _appData.taaFrame += (_appData.taaEnabled) ? 1 : 0;
     }
@@ -278,12 +282,11 @@ void mb::init::_render() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
 
+
     if (_pipeline) {
         _pipeline->resize(_sceneData.windowResolution);
         _vdbClouds->bind();
         _pipeline->execute();
-    } else {
-        _pipeline = std::make_shared<BlurPipeline>();
     }
 }
 
@@ -419,6 +422,10 @@ void mb::init::_mouseMotionHandle([[maybe_unused]] glm::vec2 mAbs, glm::vec2 mRe
         }
         _sceneData.mousePosition = pAbs;
     }
+    _appData.taaFrame = 0;
+    if (_appData.taaFrame < 0) {
+        _appData.taaFrame = 0;
+    }
 }
 
 void mb::init::_wKeyAction() {
@@ -492,5 +499,26 @@ void mb::init::_scheduledEvents() {
         _appData.wantsRecompileShaders = false;
         _vdbClouds->recompileShaders();
         _pipeline.reset();
+    }
+}
+
+void mb::init::_processing() {
+    switch (_appData.cacheProcessing) {
+        case processingStatus::START: {
+            _vdbClouds->launchProcessing();
+            _appData.cacheProcessing = processingStatus::RUNNING;
+            break;
+        }
+        case processingStatus::RUNNING: {
+            _appData.cacheProcessingStatus = _vdbClouds->getProcessingStatus();
+            if (_appData.cacheProcessingStatus.processed == _appData.cacheProcessingStatus.total) {
+                _appData.cacheProcessing = processingStatus::FINISHED;
+                _vdbClouds->finalizeProcessing();
+            }
+            break;
+        }
+        default:
+            // noop
+            break;
     }
 }

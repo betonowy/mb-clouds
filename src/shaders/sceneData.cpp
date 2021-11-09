@@ -7,6 +7,7 @@
 #include "shaderUBO.h"
 #include <config.h>
 #include <cmath>
+#include <iostream>
 
 namespace {
     void updateUBO(void *data) {
@@ -57,6 +58,27 @@ void sceneData::calculateGaussian(int radius) {
 
     for (int i{}; i < int(std::size(gaussian)); i++) {
         gaussian[i] *= inv;
+    }
+}
+
+void sceneData::calculateMsPoints(std::uniform_real_distribution<float>& dist, std::ranlux24_base& eRand) {
+    std::size_t index{0};
+    float multiplier = 1.f / static_cast<float>(std::size(ms_samplePoints));
+
+    auto offsetFunc = [](float x, float a) {
+        return x + exp2f(x) * a;
+    };
+
+    for (auto &point : ms_samplePoints) {
+        glm::vec3 dir{glm::normalize(glm::vec3{dist(eRand) - 0.5f, dist(eRand) - 0.5f, dist(eRand) - 0.5f})};
+
+        glm::float32 length{static_cast<float>(++index) * multiplier};
+        // square distribution
+//        length *= length;
+        // cubic distribution
+//        length *= length * length;
+        point = {dir, length * static_cast<float>(ms_sphereSize)};
+        point.z = offsetFunc(point.z, 1.f);
     }
 }
 
