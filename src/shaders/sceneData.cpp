@@ -65,9 +65,9 @@ void sceneData::calculateMsPoints(std::uniform_real_distribution<float>& dist, s
     std::size_t index{0};
     float multiplier = 1.f / static_cast<float>(std::size(ms_samplePoints));
 
-    auto offsetFunc = [](float x, float a) {
-        return x + exp2f(x) * a;
-    };
+//    auto offsetFunc = [](float x, float a) {
+//        return x + exp2f(x) * a;
+//    };
 
     for (auto &point : ms_samplePoints) {
         glm::vec3 dir{glm::normalize(glm::vec3{dist(eRand) - 0.5f, dist(eRand) - 0.5f, dist(eRand) - 0.5f})};
@@ -77,8 +77,8 @@ void sceneData::calculateMsPoints(std::uniform_real_distribution<float>& dist, s
 //        length *= length;
         // cubic distribution
 //        length *= length * length;
-        point = {dir, length * static_cast<float>(ms_sphereSize)};
-        point.z = offsetFunc(point.z, 1.f);
+        point = {dir, length};
+//        point.z = offsetFunc(point.z, 1.f);
     }
 }
 

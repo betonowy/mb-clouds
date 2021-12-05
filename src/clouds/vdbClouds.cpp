@@ -6,7 +6,7 @@
 
 #include "vdbOfflineIntegrator.h"
 
-#include <openvdb/openvdb.h>
+#include <OpenVDB.h>
 
 vdbClouds::vdbClouds(std::string path)
         : _vdbPath(std::move(path)) {
@@ -27,7 +27,7 @@ vdbClouds::vdbClouds(std::string path)
             filePaths::GLSL_VDB_SECONDARY_SUB_V2_FRAG
     });
 
-    _availableVdbFiles = {filePaths::VDB_CLOUD_HD, filePaths::VDB_CLOUD_MD, filePaths::VDB_CLOUD_LD};
+    _availableVdbFiles = {filePaths::VDB_CLOUD_LD, filePaths::VDB_CLOUD_MD, filePaths::VDB_CLOUD_HD};
 
 //    _initCloudStorage();
 }
@@ -58,6 +58,8 @@ void vdbClouds::_initDataset() {
         auto valueIter = grid->beginValueOn();
 
         std::cout << "Reading OpenVDB file into our custom dataset\n";
+
+        valueIter = grid->beginValueOn();
 
         while (valueIter) {
             dimType pos;
@@ -177,8 +179,9 @@ void vdbClouds::bind() {
     _cachedCloudStorage->bind();
 }
 
-void vdbClouds::launchProcessing() {
+void vdbClouds::launchProcessing(sceneData sceneData) {
     _integrator = std::make_unique<vdbOfflineIntegrator>(std::move(_cachedDataset));
+    _integrator->setData(sceneData);
     _integrator->dispatch();
 }
 

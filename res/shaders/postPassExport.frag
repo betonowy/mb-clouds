@@ -1,6 +1,5 @@
 #version 450 core
 
-uniform sampler2D fbColor;
 uniform sampler2D fbBackgroundColor;
 
 layout(location = 0) out vec4 finalColor;
@@ -131,18 +130,12 @@ void main() {
     vec2 coord = (ScreenCoord + 1) / 2;
 
     vec3 backgroundColor = texture(fbBackgroundColor, coord).rgb;
-    vec4 cloudColor = texture(fbColor, (ScreenCoord + 1) / 2);
-    float T = cloudColor.a;
 
-    finalColor = cloudColor;
+    finalColor = vec4(1);
 
-    finalColor.rgb = cloudColor.rgb + backgroundColor * (1 - pow(T, 2.2));
+    finalColor.rgb = backgroundColor;
 
     finalColor.rgb = LinearToHDR(finalColor.rgb, 1.0);
     finalColor += NoiseShaping();
-    finalColor.a = u_SceneData.alphaBlendIn;
-
-//    if (cloudColor.a == 0) {
-//        finalColor = vec4(finalColor.rgb, 1);
-//    }
+    finalColor.a = 1;
 }

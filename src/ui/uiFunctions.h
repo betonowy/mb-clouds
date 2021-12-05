@@ -43,7 +43,7 @@ struct applicationData {
 
     int taaFrame = 0;
     int taaMax = 27;
-    bool taaEnabled = true;
+    bool taaEnabled = false;
 
     bool wantsRecompileShaders = false;
     bool wantsToggleFullScreen = false;
@@ -54,6 +54,11 @@ struct applicationData {
     processingStatus cacheProcessing{processingStatus::FINISHED};
     integrationStatus cacheProcessingStatus{};
 
+    bool msRandomize = true;
+    bool msRandomizeOnce = false;
+
+    bool saveBackground = false;
+
     bool wKey{};
     bool sKey{};
     bool aKey{};
@@ -61,6 +66,7 @@ struct applicationData {
     bool qKey{};
     bool eKey{};
     bool rKey{};
+    bool gKey{};
 
     bool f11Key{};
 };

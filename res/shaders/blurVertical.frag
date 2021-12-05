@@ -103,4 +103,6 @@ void main() {
     for (int i = -radius; i <= radius; i++) {
         fbCloudBlurred += getGaussian(i) * texture(fbCloudBlurX, coord - vec2(0, i * dotsize));
     }
+
+    fbCloudBlurred.a = 1;
 }

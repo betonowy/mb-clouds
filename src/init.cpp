@@ -9,12 +9,8 @@
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl.h>
-#include <ui/uiFunctions.h>
 
 #include <iostream>
-#include <pipeline/assets/pip/DefaultPipeline.h>
-#include <pipeline/assets/pip/BlurPipeline.h>
-#include <pipeline/assets/pip/DiffShaderTest.h>
 
 #ifdef _WIN32
 extern "C"
@@ -239,7 +235,9 @@ void mb::init::_updateSceneData() {
         n = _uniformDist(_random);
     }
 
-    _sceneData.calculateMsPoints(_uniformDist, _random);
+    if (_appData.msRandomize || _appData.msRandomizeOnce) {
+        _sceneData.calculateMsPoints(_uniformDist, _random);
+    }
 
     dimType cloudSize = _vdbClouds->getSize();
     int maxCoord = 0;
@@ -258,6 +256,17 @@ void mb::init::_updateSceneData() {
     _sceneData.alphaBlendIn = sqrt(1.0f / (_appData.taaFrame + 1.0f));
     if (_appData.taaFrame < _appData.taaMax) {
         _appData.taaFrame += (_appData.taaEnabled) ? 1 : 0;
+    }
+
+    if (_appData.saveBackground) {
+        if (!_exportBkgPipeline) {
+            _exportBkgPipeline = std::make_shared<BackgroundExporter>();
+        }
+        const glm::ivec2 size{4096, 2048};
+        _exportBkgPipeline->resize(size);
+        glViewport(0, 0, size.x, size.y);
+        _exportBkgPipeline->execute();
+        _appData.saveBackground = false;
     }
 
     _sceneData.update();
@@ -486,6 +495,15 @@ void mb::init::_f11KeyAction() {
     }
 }
 
+void mb::init::_gKeyAction() {
+    if (_appData.gKey) {
+        _appData.gKey = false;
+//        bool isFullscreen = SDL_GetWindowFlags(_mainWindow) & SDL_WINDOW_FULLSCREEN;
+//        SDL_SetWindowFullscreen(_mainWindow, isFullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+
+    }
+}
+
 void mb::init::_rightMouseButtonAction() {
     if (_appData.rightMouseButton) {
         _appData.rightMouseButton = false;
@@ -505,7 +523,7 @@ void mb::init::_scheduledEvents() {
 void mb::init::_processing() {
     switch (_appData.cacheProcessing) {
         case processingStatus::START: {
-            _vdbClouds->launchProcessing();
+            _vdbClouds->launchProcessing(_sceneData);
             _appData.cacheProcessing = processingStatus::RUNNING;
             break;
         }

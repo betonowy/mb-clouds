@@ -85,6 +85,8 @@ public:
 
     void attach(GLenum format, GLenum internalFormat, GLenum formatType, GLenum attachmentType, std::string_view name);
 
+    void save(std::string filename);
+
     [[nodiscard]] FramebufferBinding getBinding(GLenum type) const;
 
     [[nodiscard]] const std::vector<Attachment> &getAttachments() const;

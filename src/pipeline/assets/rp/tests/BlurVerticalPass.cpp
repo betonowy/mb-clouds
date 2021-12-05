@@ -35,8 +35,8 @@ void BlurVerticalPass::execute() {
     BindSampler(bindingCloudBlurX.getBindingPoint(), "fbCloudBlurX");
 
     if (_hasCustomFb) {
-        RenderQuad();
+        RenderQuad(CLEAR);
     } else {
-        RenderQuad(DEFAULT_FB);
+        RenderQuad(static_cast<RenderFlags>(DEFAULT_FB | CLEAR));
     }
 }

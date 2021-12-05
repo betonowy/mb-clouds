@@ -23,5 +23,5 @@ void BlurHorizontalPass::execute() {
     auto bindingCloud = texture::TextureBinding(getResponse(_input));
     BindSampler(bindingCloud.getBindingPoint(), "fbCloudColor");
 
-    RenderQuad();
+    RenderQuad(CLEAR);
 }

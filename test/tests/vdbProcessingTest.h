@@ -10,11 +10,9 @@
 #include <config.h>
 #include <shaders/sceneData.h>
 
-#include <openvdb/openvdb.h>
+#include <OpenVDB.h>
 
 TEST(vdbProcessing, working) {
-    using clock = std::chrono::steady_clock;
-
     auto toMillis = [](const auto &timePoint) -> float {
         return std::chrono::duration_cast<std::chrono::milliseconds>(timePoint).count();
     };

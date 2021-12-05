@@ -92,7 +92,7 @@ void uiFunctions::_uiSceneDataWindow() {
 
         ImGui::PushItemWidth(170);
 
-        if (ImGui::BeginCombo("Current VDB file", currentVdbFileStr.c_str())) {
+        if (ImGui::BeginCombo("Current VDB", currentVdbFileStr.c_str())) {
 
             for (auto &available : _vdbCloudsPtr->getAvailableVdbFiles()) {
                 std::string_view filename = available;
@@ -124,39 +124,77 @@ void uiFunctions::_uiSceneDataWindow() {
 
         ImGui::PopItemWidth();
 
+        ImGui::Separator();
+
+        ImGui::Text("General VDB settings");
+
         ImGui::InputFloat("VDB Scale", &_sceneDataPtr->vdbScale);
 
         ImGui::DragFloat("VDB Density", &_sceneDataPtr->vdbDensityMultiplier,
                          0.5f, 0.0f, 10000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
         ImGui::DragFloat("VDB Background", &_sceneDataPtr->backgroundDensity,
                          0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-        ImGui::DragFloat("Ray Primary step length", &_sceneDataPtr->primaryRayLength,
+        ImGui::Separator();
+
+        ImGui::Text("Single Scattering settings");
+
+        ImGui::DragFloat("SS ray step length", &_sceneDataPtr->primaryRayLength,
                          0.0004f, 0.001f, 0.1f, "%.3f", ImGuiSliderFlags_Logarithmic);
-//        ImGui::DragFloat("Ray Primary step exp", &_sceneDataPtr->primaryRayLengthExp,
-//                         0.001f, 1.0f, 1.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
-        ImGui::DragFloat("Ray secondary step length", &_sceneDataPtr->secondaryRayLength,
-                         0.0004f, 0.001f, 0.1f, "%.3f", ImGuiSliderFlags_Logarithmic);
-//        ImGui::DragFloat("Ray secondary step exp", &_sceneDataPtr->secondaryRayLengthExp,
-//                         0.001f, 1.0f, 1.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
-        if (ImGui::Button("TAA reset")) {
-            _taaReset();
-        }
+        ImGui::DragFloat("SS integral multiplier", &_sceneDataPtr->ss_integral_mult);
+
+        ImGui::DragFloat("SS intensity multiplier", &_sceneDataPtr->ss_intensity_mult);
+
+        ImGui::DragFloat("SS Lorenz-Mie multiplier", &_sceneDataPtr->ss_lorenz_mie_mult);
+
+        ImGui::Separator();
+
+        ImGui::Text("Multi Scattering settings");
+
+        ImGui::DragFloat("MS integral multiplier", &_sceneDataPtr->ms_integral_mult);
+
+        ImGui::DragFloat("MS intensity multiplier", &_sceneDataPtr->ms_intensity_mult);
+
+        ImGui::DragFloat("MS Lorenz-Mie multiplier", &_sceneDataPtr->ms_lorenz_mie_mult);
+
+        ImGui::DragFloat("MS distance power", &_sceneDataPtr->ms_distance_pow);
+
+        ImGui::DragFloat("MS SoI radius", &_sceneDataPtr->ms_cloudRadius, 0.0004f, 0.00001f, 1.0f, "%.5f", ImGuiSliderFlags_Logarithmic);
 
         ImGui::DragFloat("Cloud height", &_sceneDataPtr->cloudHeight,
-                         0.001, 0.0f, 1.0f);
+                         0.001, -1.0f, 1.0f);
         ImGui::DragFloat("Cloud height sensitivity", &_sceneDataPtr->cloudHeightSensitivity,
                          0.001, 0.0f, 1.0f);
-        ImGui::DragFloat("Density Multiplier", &_sceneDataPtr->densityMultiplier,
-                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-        ImGui::DragFloat("Ambient multiplier", &_sceneDataPtr->ambientMultiplier,
-                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-        ImGui::DragFloat("Intensity multiplier", &_sceneDataPtr->radianceMultiplier,
-                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
-        ImGui::SliderInt("Blur radius", &_sceneDataPtr->gaussianRadius, 0, 127);
+
+        ImGui::SliderInt("MS point skip", &_sceneDataPtr->ms_skip, 1, 32, "%d", ImGuiSliderFlags_AlwaysClamp);
+
+        ImGui::Checkbox("MS rand on", &_appData->msRandomize);
+
+        _appData->msRandomizeOnce = ImGui::Button("MS rand once");
+
+        ImGui::Separator();
+
+        ImGui::Text("General ray marching settings");
+
+        ImGui::DragFloat("Ray Primary step length", &_sceneDataPtr->primaryRayLength,
+                         0.0004f, 0.001f, 0.1f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        ImGui::DragFloat("Ray secondary step length", &_sceneDataPtr->secondaryRayLength,
+                         0.0004f, 0.001f, 0.1f, "%.3f", ImGuiSliderFlags_Logarithmic);
+
+        ImGui::Separator();
+
+        ImGui::Text("Post-processing settings");
 
         ImGui::Checkbox("TAA enabled", &_appData->taaEnabled);
 
         ImGui::InputInt("TAA max", &_appData->taaMax);
+
+        if (ImGui::Button("TAA reset")) {
+            _taaReset();
+        }
+
+        ImGui::SliderInt("Blur radius", &_sceneDataPtr->gaussianRadius, 0, 66);
+
+        _appData->saveBackground = ImGui::Button("Export background");
 
         ImGui::Separator();
 
@@ -191,6 +229,17 @@ void uiFunctions::_uiSceneDataWindow() {
         ImGui::DragFloat("BLo power", reinterpret_cast<float *>(&(_sceneDataPtr->sunPower)),
                          0.1f, 0.0f, 100.0f, "%.3f",
                          ImGuiSliderFlags_Logarithmic);
+
+        ImGui::Separator();
+
+        ImGui::Text("Fine tune debug settings");
+
+        ImGui::DragFloat("Density Multiplier", &_sceneDataPtr->densityMultiplier,
+                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        ImGui::DragFloat("Ambient multiplier", &_sceneDataPtr->ambientMultiplier,
+                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+        ImGui::DragFloat("Intensity multiplier", &_sceneDataPtr->radianceMultiplier,
+                         0.5f, 0.0f, 1000.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 
         ImGui::PopItemWidth();
 

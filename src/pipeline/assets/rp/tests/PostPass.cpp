@@ -31,7 +31,7 @@ PostPass::PostPass(std::string backgroundTargetName, std::string cloudTargetName
           _cloudTargetName(std::move(cloudTargetName)),
           _hasCustomFb(true),
           _blueNoiseTex(filePaths::TEX_BLUENOISE) {
-    _frameBuffer.attach(GL_RGBA, GL_RGBA16F, GL_FLOAT, GL_COLOR_ATTACHMENT0, output);
+    _frameBuffer.attach(GL_RGBA, GL_RGBA32F, GL_FLOAT, GL_COLOR_ATTACHMENT0, output);
     _frameBuffer.complete();
 }
 
@@ -48,6 +48,6 @@ void PostPass::execute() {
     if (_hasCustomFb) {
         RenderQuad();
     } else {
-        RenderQuad(DEFAULT_FB);
+        RenderQuad(static_cast<RenderFlags>(DEFAULT_FB));
     }
 }

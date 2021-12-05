@@ -413,11 +413,11 @@ VDB_AccessorLinear VDB_GetAccessorLinear(in vec3 pos) {
     acc.ratio = VDB_GetInterpolationRatio(pos);
     acc.invRatio = 1 - acc.ratio;
 
-//    acc.ratio = vec3(0);
-//    acc.invRatio = vec3(1);
+    //    acc.ratio = vec3(0);
+    //    acc.invRatio = vec3(1);
 
     const ivec3 vdb_pos[8] = { vdb_basePos, vdb_basePos + ivec3(1, 0, 0), vdb_basePos + ivec3(0, 1, 0), vdb_basePos + ivec3(1, 1, 0), vdb_basePos + ivec3(0, 0, 1), vdb_basePos + ivec3(1, 0, 1), vdb_basePos + ivec3(0, 1, 1), vdb_basePos + ivec3(1, 1, 1) };
-//    const ivec3 vdb_pos[8] = { vdb_basePos, vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0) };
+    //    const ivec3 vdb_pos[8] = { vdb_basePos, vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0), vdb_basePos + ivec3(0, 0, 0) };
 
     for (int i = 0; i < 8; i++) {
         acc.rootPos[i] =  VDB_ReduceDim(vdb_pos[i], 12, 0);
@@ -550,12 +550,12 @@ VdbValue VDB_GetVoxelAccLinear(in vec3 pos) {
     VdbValue planes[4];
 
     // you can do it simpler
-//    for (int y = 0; y <= 1; y++) {
-//        for (int z = 0; z <= 1; z++) {
-//            planes[y + 2 * z].density = accL.invRatio.x * accL.voxelValue[2 * y + 4 * z].density + accL.ratio.x * accL.voxelValue[1 + 2 * y + 4 * z].density;
-//            planes[0].integral = accL.invRatio.x * accL.voxelValue[2 * y + 4 * z].integral + accL.ratio.x * accL.voxelValue[1 + 2 * y + 4 * z].integral;
-//        }
-//    }
+    //    for (int y = 0; y <= 1; y++) {
+    //        for (int z = 0; z <= 1; z++) {
+    //            planes[y + 2 * z].density = accL.invRatio.x * accL.voxelValue[2 * y + 4 * z].density + accL.ratio.x * accL.voxelValue[1 + 2 * y + 4 * z].density;
+    //            planes[0].integral = accL.invRatio.x * accL.voxelValue[2 * y + 4 * z].integral + accL.ratio.x * accL.voxelValue[1 + 2 * y + 4 * z].integral;
+    //        }
+    //    }
 
     planes[0].density = accL.invRatio.x * accL.voxelValue[1 * 0 + 2 * 0 + 4 * 0].density + accL.ratio.x * accL.voxelValue[1 * 1 + 2 * 0 + 4 * 0].density;
     planes[0].integral = accL.invRatio.x * accL.voxelValue[1 * 0 + 2 * 0 + 4 * 0].integral + accL.ratio.x * accL.voxelValue[1 * 1 + 2 * 0 + 4 * 0].integral;
@@ -713,7 +713,7 @@ float SecondaryRay(in vec3 ro, in float localDensity, in float phaseFunc, in flo
     float firstIntegral = 0;
 
     { // cached integral
-        firstIntegral = VDB_GetVoxelAccLinear(ro).integral;
+        firstIntegral = VDB_GetVoxelAcc(ro).integral;
         if (firstIntegral <= 0) firstIntegral = 0.001;
     }
 
@@ -736,7 +736,7 @@ float MultiscatterRay(in vec3 ro, in float localDensity, in float distance, in f
     float integral = 0;
     float firstIntegral = 0;
 
-    const VdbValue value = VDB_GetVoxelAccLinear(ro);
+    const VdbValue value = VDB_GetVoxelAcc(ro);
 
     { // cached integral
         firstIntegral = value.integral;
@@ -842,47 +842,11 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
 
     vec4 accumulatedColor = vec4(0);
 
-    // get adaptive sample value (noisiness) tiled
-    float value = SampleAdaptiveLayer((ivec2(gl_FragCoord) / 16) * 16);
-    // get adaptive sample value (noisiness) untiled
-    //    float value = SampleAdaptiveLayer(ivec2(gl_FragCoord));
-
-    float stepMultiplier = 1;
-
-    //    if (value > 0.8) {
-    //        stepMultiplier *= 0.2;
-    //    }
-    //
-    //    if (value > 0.9) {
-    //        stepMultiplier *= 0.2;
-    //    }
-    //
-    //    if (value > 0.95) {
-    //        stepMultiplier *= 0.2;
-    //    }
-
-    // first ray has random length (monte carlo sampling)
-    {
-        const float rayLength = SampleBlueNoise(ivec2(gl_FragCoord)).x * u_SceneData.primaryRayLength;
-        float value = VDB_GetVoxelAccLinear(ro).density;
-        RayAdvance(ro, rd, rayLength);
-    }
-
-    // precalculate values
-
     const float rayDot = dot(u_SceneData.sunDir, rd);
-    //    const float phaseFunc = sqrt(FittedLorenzMie(rayDot));
-    //    const float phaseFunc = 1.0;
     const float phaseFunc = HenyeyGreenstein(0.0, rayDot);
     float step = u_SceneData.primaryRayLength;
 
-    float accAlpha = 0.0;
-    float prevValue = 0.0;
     float T = 1.0;
-
-    const float alphaThreshold = 0.99;
-    float baseIntegral = 0.0;
-    const float albedo = 0.01;
 
     vec3 color = vec3(0);
 
@@ -891,14 +855,39 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
     float stepLength = u_SceneData.primaryRayLength;
     const float ar = 1.00;
 
-    while (InsideAABB(ro)) {
-        float localDensity = VDB_GetVoxelAccLinear(ro).density;
+    // first ray has random length (monte carlo sampling)
+    {
+        const float rayLength = SampleBlueNoise(ivec2(gl_FragCoord)).x * u_SceneData.primaryRayLength;
+        float localDensity = VDB_GetVoxelAcc(ro).density;
 
         float cloudHeight = u_SceneData.cloudHeight + ro.z * u_SceneData.cloudHeightSensitivity;
 
         if (localDensity > 0.0f) {
-            //            float intensity = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
-            float intensity = MultiScattering(ro, localDensity, phaseFunc, rayDot, cloudHeight);
+            float intensity = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
+            intensity *= u_SceneData.radianceMultiplier;
+
+            vec3 ambient = (0.5 + 0.6 * cloudHeight) * vec3(0.2, 0.5, 1.0) * 6.5 + vec3(0.8) * max(0.0, 1.0 - 2.0 * cloudHeight);
+            ambient *= u_SceneData.ambientMultiplier;
+
+            vec3 radiance = ambient + intensity * u_SceneData.sunColor * u_SceneData.sunPower;
+
+            color += T * (radiance - radiance * exp(-localDensity * step));
+
+            T *= exp(-localDensity * step);
+
+            step = u_SceneData.primaryRayLength / T;
+        }
+
+        RayAdvance(ro, rd, rayLength);
+    }
+
+    while (InsideAABB(ro)) {
+        float localDensity = VDB_GetVoxelAcc(ro).density;
+
+        float cloudHeight = u_SceneData.cloudHeight + ro.z * u_SceneData.cloudHeightSensitivity;
+
+        if (localDensity > 0.0f) {
+            float intensity = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
             intensity *= u_SceneData.radianceMultiplier;
 
             vec3 ambient = (0.5 + 0.6 * cloudHeight) * vec3(0.2, 0.5, 1.0) * 6.5 + vec3(0.8) * max(0.0, 1.0 - 2.0 * cloudHeight);

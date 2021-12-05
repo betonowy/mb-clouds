@@ -5,7 +5,7 @@
 #ifndef MB_CLOUDS_PIPEMAN_H
 #define MB_CLOUDS_PIPEMAN_H
 
-#include <pipeline/pipeline.h>
+#include <pipeline/Pipeline.h>
 #include <functional>
 #include <memory>
 #include <string>

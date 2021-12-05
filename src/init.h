@@ -15,10 +15,11 @@
 #include <shaders/texture.h>
 #include <pipeline/Pipeline.h>
 #include <pipeline/PipeMan.h>
+#include <pipeline/assets/pip/final/BackgroundExporter.h>
 
 #include <memory>
 #include <random>
-#include <pipeline/assets/pip/EmptyPipeline.h>
+#include <pipeline/assets/pip/tests/EmptyPipeline.h>
 
 class vdbClouds;
 
@@ -95,13 +96,15 @@ namespace mb {
 
         void _f11KeyAction();
 
+        void _gKeyAction();
+
         void _rightMouseButtonAction();
 
         // constants
 
         static constexpr const char *_appWindowName = "Clouds";
-        static constexpr int _appDefaultWindowSizeX = 800;
-        static constexpr int _appDefaultWindowSizeY = 600;
+        static constexpr int _appDefaultWindowSizeX = 1024;
+        static constexpr int _appDefaultWindowSizeY = 1024;
 
         // static
 
@@ -126,6 +129,8 @@ namespace mb {
         uiFunctions _uiFunctions;
 
         std::shared_ptr<Pipeline> _pipeline{std::make_shared<EmptyPipeline>()};
+
+        std::shared_ptr<Pipeline> _exportBkgPipeline{};
 
         camera _camera;
 

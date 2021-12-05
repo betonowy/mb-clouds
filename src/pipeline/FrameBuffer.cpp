@@ -4,6 +4,8 @@
 
 #include "FrameBuffer.h"
 #include <util/misc.h>
+#include <iostream>
+#include <fstream>
 
 FrameBuffer::FrameBuffer() {
     glGenFramebuffers(1, &_fboId);
@@ -76,4 +78,27 @@ void FrameBuffer::complete() {
 
 const std::vector<FrameBuffer::Attachment> &FrameBuffer::getAttachments() const {
     return _attachments;
+}
+
+void FrameBuffer::save(std::string filename) {
+    const auto& a = _attachments.front();
+    const auto bind = getBinding(GL_FRAMEBUFFER);
+
+    std::string buffer(a.size.x * a.size.y * 4, 0);
+
+    glReadPixels(0, 0, a.size.x, a.size.y, a.format, a.formatType, buffer.data());
+
+    std::size_t lastNonZero = 0;
+
+    for (std::size_t i = 0; i < buffer.size(); i++) {
+        if (buffer[i] != 0) {
+            lastNonZero = i;
+        }
+    }
+
+    filename += ".data";
+    std::ofstream(filename.c_str(), std::ios::binary | std::ios::out) << buffer;
+
+    std::cout << "saved file: " << filename << "\n";
+
 }

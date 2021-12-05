@@ -4,9 +4,9 @@
 
 #include "DefaultPipeline.h"
 
-#include <pipeline/assets/rp/BackgroundPass.h>
-#include <pipeline/assets/rp/CloudPass.h>
-#include <pipeline/assets/rp/PostPass.h>
+#include <pipeline/assets/rp/tests/BackgroundPass.h>
+#include <pipeline/assets/rp/tests/CloudPass.h>
+#include <pipeline/assets/rp/tests/PostPass.h>
 
 DefaultPipeline::DefaultPipeline()
         : Pipeline({

@@ -713,7 +713,7 @@ float SecondaryRay(in vec3 ro, in float localDensity, in float phaseFunc, in flo
     float firstIntegral = 0;
 
     { // cached integral
-        firstIntegral = VDB_GetVoxelAccLinear(ro).integral;
+        firstIntegral = VDB_GetVoxelAcc(ro).integral;
         if (firstIntegral <= 0) firstIntegral = 0.001;
     }
 
@@ -736,7 +736,7 @@ float MultiscatterRay(in vec3 ro, in float localDensity, in float distance, in f
     float integral = 0;
     float firstIntegral = 0;
 
-    const VdbValue value = VDB_GetVoxelAccLinear(ro);
+    const VdbValue value = VDB_GetVoxelAcc(ro);
 
     { // cached integral
         firstIntegral = value.integral;
@@ -750,7 +750,8 @@ float MultiscatterRay(in vec3 ro, in float localDensity, in float distance, in f
     float depthParam = 1 / (integral * 1);
 
     float scatter = mix(0.008, 1.0, smoothstep(0.96, 0.0, 0.4));
-    float beersLaw = exp(-stepL * integral) + 0.5 * scatter * exp(-0.1 * stepL * integral) + scatter * 0.4 * exp(-0.02 * stepL * integral);
+//    float beersLaw = exp(-stepL * integral) + 0.5 * scatter * exp(-0.1 * stepL * integral) + scatter * 0.4 * exp(-0.02 * stepL * integral);
+    float beersLaw = 1 / integral;
 
     float light = beersLaw * phaseFunc * mix(0.05 + 1.5 * pow(min(1.0, localDensity * 8.5), 0.3 + 5.5 * cloudHeight), 1.0, clamp(integral * 0.4, 0.0, 1.0));
     return LorenzMie(dotVal, depthParam) * 1 + light;
@@ -864,7 +865,7 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
     // first ray has random length (monte carlo sampling)
     {
         const float rayLength = SampleBlueNoise(ivec2(gl_FragCoord)).x * u_SceneData.primaryRayLength;
-        float value = VDB_GetVoxelAccLinear(ro).density;
+        float value = VDB_GetVoxelAcc(ro).density;
         RayAdvance(ro, rd, rayLength);
     }
 
@@ -892,7 +893,7 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
     const float ar = 1.00;
 
     while (InsideAABB(ro)) {
-        float localDensity = VDB_GetVoxelAccLinear(ro).density;
+        float localDensity = VDB_GetVoxelAcc(ro).density;
 
         float cloudHeight = u_SceneData.cloudHeight + ro.z * u_SceneData.cloudHeightSensitivity;
 

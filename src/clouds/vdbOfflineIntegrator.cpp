@@ -14,7 +14,7 @@ void vdbOfflineIntegrator::wait() {
 void vdbOfflineIntegrator::_processVoxel(vdbValueAccessor<5, 4, 3, cachedVoxelData> &voxel) {
     glm::vec3 pos = glm::vec3{voxel.decodePosition()} + glm::vec3{0.5, 0.5, 0.5};
 
-    constexpr float stepSize = 0.03141593;
+    constexpr float stepSize = 0.3141593;
 
     float integral{};
     dimType lastPos = pos;

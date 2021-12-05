@@ -10,6 +10,7 @@
 #include <tree/vdbDataExtract.h>
 #include <shaders/shader.h>
 #include "vdbIntegrationStatus.h"
+#include <shaders/sceneData.h>
 
 #include <memory>
 
@@ -53,7 +54,7 @@ public:
 
     integrationStatus getProcessingStatus();
 
-    void launchProcessing();
+    void launchProcessing(sceneData sceneData);
 
     void finalizeProcessing();
 

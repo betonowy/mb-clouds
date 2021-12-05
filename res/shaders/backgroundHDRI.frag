@@ -1,9 +1,6 @@
 #version 450 core
 
-uniform sampler2D fbColor;
-uniform sampler2D fbBackgroundColor;
-
-layout(location = 0) out vec4 finalColor;
+layout(location = 0) out vec4 fbBackgroundColor;
 
 in vec2 ScreenCoord;
 
@@ -105,44 +102,77 @@ vec4 SampleBlueNoise(in ivec2 pixIndex) {
     return texelFetch(blueNoiseSampler, pixIndex, 0);
 }
 
-vec4 SampleBlueNoiseLinear(in vec2 pos) {
-    vec2 randomOffset = vec2(getRandomData(0), getRandomData(1)) * 1000;
-    return texture(blueNoiseSampler, pos + randomOffset);
-}
-
 vec4 NoiseShaping() {
-    const float noiseValue = 2.0f / 256;
+    const float noiseValue = 1.0f / 256;
     const float offset = 0.5f * noiseValue;
     return vec4(SampleBlueNoise(ivec2(gl_FragCoord.xy)).rgb * noiseValue, 0) - offset;
 }
 
-vec3 LinearToHDR(in vec3 inColor, in float exposure) {
-    const float invGamma = 1.0 / 2.2;
+vec3 BackgroundSun(vec3 rd) {
+    vec3 color = vec3(0);
 
-    vec3 tempCol = inColor;
+    float sunInfluence = 0.5 * (dot(rd, u_SceneData.sunDir) + 1.0);
+    sunInfluence = pow(sunInfluence, u_SceneData.sunFocus);
 
-    inColor = vec3(1.0) - exp(-inColor * exposure);
-    inColor = pow(inColor, vec3(invGamma));
+    color += u_SceneData.sunColor * sunInfluence * u_SceneData.sunPower;
 
-    return inColor;
+    return color;
+}
+
+vec3 BackgroundSky(vec3 rd) {
+    const float sunFocus = 2.0;
+    const float sunFocusB = 2.0;
+
+    vec3 color = vec3(0);
+
+    float sunInfluence = 0.5 * (dot(rd, u_SceneData.sunDir) + 1.0);
+    sunInfluence = pow(sunInfluence, sunFocus);
+
+    sunInfluence = MapValue(0.0, 1.0, 0.5, 1.0, sunInfluence);
+
+    color += u_SceneData.backgroundColorTop * sunInfluence * u_SceneData.topPower;
+
+    sunInfluence = pow(sunInfluence, sunFocusB);
+
+    color += u_SceneData.backgroundColorMid * sunInfluence * u_SceneData.midPower;
+
+    return color;
+}
+
+vec3 BackgroundColor(vec3 rd) {
+    vec3 color = vec3(0);
+    const float zenithBlackout = 0.95;
+    const float groundInfluence = 32.0;
+    vec3 skyColor = BackgroundSky(rd);
+
+    float zenith = (rd.z + 1.0) * 0.5;
+    float zenithBis = clamp(2.0 * zenith - 1.0, 0.0, 1.0);
+
+    if (zenith < 0.5) zenith = pow(zenith, 1.0 - groundInfluence * (zenith - 0.5));
+    color += skyColor * zenith + u_SceneData.backgroundColorBottom * (1.0 - zenith) * u_SceneData.bottomPower;
+
+    color -= zenithBlackout * pow(zenithBis, 0.8) * skyColor;
+
+    color += BackgroundSun(rd);
+
+    return color;
+}
+
+void GetStartingRay(out vec3 ro, out vec3 rd) {
+    ro = vec3(0);
+
+    const float PI = 3.141593;
+    const vec2 coord = ScreenCoord * PI * vec2(1, 0.5);
+
+    float x = sin(coord.x) * cos(coord.y);
+    float y = cos(coord.x) * cos(coord.y);
+    float z = -sin(coord.y);
+
+    rd = vec3(x, y, z);
 }
 
 void main() {
-    vec2 coord = (ScreenCoord + 1) / 2;
-
-    vec3 backgroundColor = texture(fbBackgroundColor, coord).rgb;
-    vec4 cloudColor = texture(fbColor, (ScreenCoord + 1) / 2);
-    float T = cloudColor.a;
-
-    finalColor = cloudColor;
-
-    finalColor.rgb = cloudColor.rgb + backgroundColor * (1 - pow(T, 2.2));
-
-    finalColor.rgb = LinearToHDR(finalColor.rgb, 1.0);
-    finalColor += NoiseShaping();
-    finalColor.a = u_SceneData.alphaBlendIn;
-
-//    if (cloudColor.a == 0) {
-//        finalColor = vec4(finalColor.rgb, 1);
-//    }
+    vec3 ro, rd;
+    GetStartingRay(ro, rd);
+    fbBackgroundColor = vec4(BackgroundColor(rd), 1);
 }

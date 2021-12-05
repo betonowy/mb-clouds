@@ -4,11 +4,11 @@
 
 #include "BlurPipeline.h"
 
-#include <pipeline/assets/rp/BackgroundPass.h>
-#include <pipeline/assets/rp/CloudPass.h>
-#include <pipeline/assets/rp/PostPass.h>
-#include <pipeline/assets/rp/BlurHorizontalPass.h>
-#include <pipeline/assets/rp/BlurVerticalPass.h>
+#include <pipeline/assets/rp/tests/BackgroundPass.h>
+#include <pipeline/assets/rp/tests/CloudPass.h>
+#include <pipeline/assets/rp/tests/PostPass.h>
+#include <pipeline/assets/rp/tests/BlurHorizontalPass.h>
+#include <pipeline/assets/rp/tests/BlurVerticalPass.h>
 
 BlurPipeline::BlurPipeline()
         : Pipeline({

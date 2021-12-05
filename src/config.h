@@ -19,11 +19,20 @@ namespace filePaths {
     static constexpr const char* GLSL_VDB_DEBUG_AABB_FRAG = "../res/shaders/vdbDebugAABB.frag";
     static constexpr const char* GLSL_SCREEN_QUAD_VERT = "../res/shaders/screenQuad.vert";
     static constexpr const char* GLSL_POST_PASS_FRAG = "../res/shaders/postPass.frag";
+    static constexpr const char* GLSL_POST_PASS_EXPORT_FRAG = "../res/shaders/postPassExport.frag";
     static constexpr const char* GLSL_BACKGROUND_FRAG = "../res/shaders/background.frag";
+    static constexpr const char* GLSL_BACKGROUND_HDRI_FRAG = "../res/shaders/backgroundHDRI.frag";
     static constexpr const char* GLSL_BLUR_HORIZONTAL_FRAG = "../res/shaders/blurHorizontal.frag";
     static constexpr const char* GLSL_BLUR_VERTICAL_FRAG = "../res/shaders/blurVertical.frag";
     static constexpr const char* GLSL_COPY_FRAG = "../res/shaders/copy.frag";
     static constexpr const char* GLSL_ABS_DIFF_FRAG = "../res/shaders/absDiff.frag";
+
+    static constexpr const char* GLSL_VDB_SSNC = "../res/shaders/vdb/final/SSNC.frag";
+    static constexpr const char* GLSL_VDB_SSLC = "../res/shaders/vdb/final/SSLC.frag";
+    static constexpr const char* GLSL_VDB_SSNBF = "../res/shaders/vdb/final/SSNBF.frag";
+    static constexpr const char* GLSL_VDB_SSLBF = "../res/shaders/vdb/final/SSLC.frag";
+    static constexpr const char* GLSL_VDB_MSNC = "../res/shaders/vdb/final/MSNC.frag";
+    static constexpr const char* GLSL_VDB_MSLC = "../res/shaders/vdb/final/MSLC.frag";
 
     static constexpr const char* GLSL_FRAG_SUFFIX = ".frag";
     static constexpr const char* GLSL_VERT_SUFFIX = ".vert";
