@@ -9,10 +9,14 @@
 #include <random>
 
 struct sceneData {
-    glm::vec3 cameraPosition{1.1, -1.1, 0.4};
+    glm::vec3 cameraPosition{-1, -1, 0.4};
+//    glm::vec3 cameraPosition{0.4, -1.32, -0.35};
+//    glm::vec3 cameraPosition{1, 0.75, 0.4};
+//    glm::vec3 cameraPosition{-0.45, 0.8, 0.85};
+//    glm::vec3 cameraPosition{0, -0.7, -1};
     float fov{};
 
-    glm::vec3 cameraLookDir{};
+    glm::vec3 cameraLookDir{1, 1, 1};
     float aspectRatio{};
 
     glm::mat4 viewMatrix{};
@@ -29,10 +33,10 @@ struct sceneData {
 
     float vdbScale = 2;
     float aabbScale = 1;
-    float vdbDensityMultiplier = 1620;
+    float vdbDensityMultiplier = 1620; // /1 /5 /25 /125
     float backgroundDensity = 0.0;
 
-    float primaryRayLength = 0.040f;
+    float primaryRayLength = 0.005f;
     float primaryRayLengthExp = 1.0f;
     float secondaryRayLength = 0.060f;
     float secondaryRayLengthExp = 1.0f;
@@ -78,7 +82,7 @@ struct sceneData {
 
     float gaussian[32 * 4];
 
-    int32_t gaussianRadius = 2;
+    int32_t gaussianRadius = 0;
     int32_t ms_skip = 22;
     float ms_ratio = 0;
     float ms_cloudRadius = 0.097f;

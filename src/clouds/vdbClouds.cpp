@@ -27,7 +27,7 @@ vdbClouds::vdbClouds(std::string path)
             filePaths::GLSL_VDB_SECONDARY_SUB_V2_FRAG
     });
 
-    _availableVdbFiles = {filePaths::VDB_CLOUD_LD, filePaths::VDB_CLOUD_MD, filePaths::VDB_CLOUD_HD};
+    _availableVdbFiles = {filePaths::VDB_CLOUD_HD, filePaths::VDB_CLOUD_MD, filePaths::VDB_CLOUD_LD};
 
 //    _initCloudStorage();
 }

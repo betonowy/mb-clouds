@@ -33,7 +33,27 @@ struct applicationData {
     bool rotateCamera = false;
     bool relativeMode = false;
 
-    glm::vec3 cameraRotation = {M_PI / 4, M_PI / 8, 0};
+    static constexpr float startingXRot = 75 * (-1.0 / 180.0 * M_PI) + (M_PI / 2);
+    static constexpr float startingYRot = 0 * (1.0 / 180.0 * M_PI);
+    static constexpr float startingZRot = 135.0 * (1.0 / 180.0 * M_PI) - (M_PI);
+
+//    static constexpr float startingXRot = 120 * (-1.0 / 180.0 * M_PI) + (M_PI / 2);
+//    static constexpr float startingYRot = 0 * (1.0 / 180.0 * M_PI);
+//    static constexpr float startingZRot = 200.0 * (1.0 / 180.0 * M_PI) - (M_PI);
+
+//    static constexpr float startingXRot = 60 * (-1.0 / 180.0 * M_PI) + (M_PI / 2);
+//    static constexpr float startingYRot = 0 * (1.0 / 180.0 * M_PI);
+//    static constexpr float startingZRot = 300.0 * (1.0 / 180.0 * M_PI) - (M_PI);
+
+//    static constexpr float startingXRot = 35 * (-1.0 / 180.0 * M_PI) + (M_PI / 2);
+//    static constexpr float startingYRot = 0 * (1.0 / 180.0 * M_PI);
+//    static constexpr float startingZRot = 30.0 * (1.0 / 180.0 * M_PI) - (M_PI);
+
+//    static constexpr float startingXRot = 150 * (-1.0 / 180.0 * M_PI) + (M_PI / 2);
+//    static constexpr float startingYRot = 0 * (1.0 / 180.0 * M_PI);
+//    static constexpr float startingZRot = 180.0 * (1.0 / 180.0 * M_PI) - (M_PI);
+
+    glm::vec3 cameraRotation = {startingZRot, startingXRot, startingYRot};
     glm::vec3 cameraSpeed{};
     float cameraSlowDownSpeed = 1;
     float cameraAcceleration = 0.3;
@@ -42,8 +62,8 @@ struct applicationData {
     float cameraMoveSpeed = 1;
 
     int taaFrame = 0;
-    int taaMax = 27;
-    bool taaEnabled = false;
+    int taaMax = 200;
+    bool taaEnabled = true;
 
     bool wantsRecompileShaders = false;
     bool wantsToggleFullScreen = false;
@@ -69,6 +89,10 @@ struct applicationData {
     bool gKey{};
 
     bool f11Key{};
+
+    bool uiActive{true};
+
+    bool updatePosition{false};
 };
 
 class uiFunctions {
@@ -103,6 +127,8 @@ private:
 
     void _uiMainMenuBar();
 
+    void _uiPoseSelect();
+
     // windows
 
     void _uiSceneDataWindow();
@@ -118,6 +144,7 @@ private:
 
     std::string currentPipelineStr;
     std::string currentVdbFileStr;
+    std::string currentPoseStr = "Pose 1";
 
     // strings
 

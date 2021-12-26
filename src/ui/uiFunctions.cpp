@@ -13,6 +13,59 @@
 
 #include <sstream>
 
+namespace {
+    using PoseType = std::tuple<std::string_view, glm::vec3, glm::vec3>;
+    std::array<PoseType, 5> _compiledPoses{
+            {
+                    {
+                            "Pose 1",
+                            {-1, -1, 0.4},
+                            {
+                                    135.0 * (1.0 / 180.0 * M_PI) - (M_PI),
+                                    75 * (-1.0 / 180.0 * M_PI) + (M_PI / 2),
+                                    0 * (1.0 / 180.0 * M_PI),
+                            }
+                    },
+                    {
+                            "Pose 2",
+                            {0.4, -1.32, -0.35},
+                            {
+                                    200.0 * (1.0 / 180.0 * M_PI) - (M_PI),
+                                    120 * (-1.0 / 180.0 * M_PI) + (M_PI / 2),
+                                    0 * (1.0 / 180.0 * M_PI),
+                            }
+                    },
+                    {
+                            "Pose 3",
+                            {1, 0.75, 0.4},
+                            {
+                                    300.0 * (1.0 / 180.0 * M_PI) - (M_PI),
+                                    60 * (-1.0 / 180.0 * M_PI) + (M_PI / 2),
+                                    0 * (1.0 / 180.0 * M_PI),
+                            }
+                    },
+                    {
+                            "Pose 4",
+                            {-0.45, 0.8, 0.85},
+                            {
+                                    30.0 * (1.0 / 180.0 * M_PI) - (M_PI),
+                                    35 * (-1.0 / 180.0 * M_PI) + (M_PI / 2),
+                                    0 * (1.0 / 180.0 * M_PI),
+                            }
+                    },
+                    {
+                            "Pose 5",
+                            {0, -0.7, -1},
+                            {
+                                    180.0 * (1.0 / 180.0 * M_PI) - (M_PI),
+                                    150 * (-1.0 / 180.0 * M_PI) + (M_PI / 2),
+                                    0 * (1.0 / 180.0 * M_PI),
+                            }
+                    },
+            }
+    };
+}
+
 uiFunctions::uiFunctions(sceneData *sceneDataPtr, applicationData *appData)
         : _sceneDataPtr(sceneDataPtr), _appData(appData) {}
 
@@ -126,6 +179,10 @@ void uiFunctions::_uiSceneDataWindow() {
 
         ImGui::Separator();
 
+        _uiPoseSelect();
+
+        ImGui::Separator();
+
         ImGui::Text("General VDB settings");
 
         ImGui::InputFloat("VDB Scale", &_sceneDataPtr->vdbScale);
@@ -158,7 +215,8 @@ void uiFunctions::_uiSceneDataWindow() {
 
         ImGui::DragFloat("MS distance power", &_sceneDataPtr->ms_distance_pow);
 
-        ImGui::DragFloat("MS SoI radius", &_sceneDataPtr->ms_cloudRadius, 0.0004f, 0.00001f, 1.0f, "%.5f", ImGuiSliderFlags_Logarithmic);
+        ImGui::DragFloat("MS SoI radius", &_sceneDataPtr->ms_cloudRadius, 0.0004f, 0.00001f, 1.0f, "%.5f",
+                         ImGuiSliderFlags_Logarithmic);
 
         ImGui::DragFloat("Cloud height", &_sceneDataPtr->cloudHeight,
                          0.001, -1.0f, 1.0f);
@@ -285,7 +343,8 @@ void uiFunctions::setPipelinePtr(std::shared_ptr<Pipeline> pipelinePtr) {
 
 void uiFunctions::_cacheProcessing() {
     if (_appData->cacheProcessing == processingStatus::RUNNING) {
-        ImGui::SetNextWindowPos(ImVec2(float(_sceneDataPtr->windowResolution.x) / 2 - 150, float(_sceneDataPtr->windowResolution.y) / 2 - 35));
+        ImGui::SetNextWindowPos(ImVec2(float(_sceneDataPtr->windowResolution.x) / 2 - 150,
+                                       float(_sceneDataPtr->windowResolution.y) / 2 - 35));
         ImGui::SetNextWindowSize(ImVec2(300, 70));
 
         if (!ImGui::Begin("Processing status", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar)) {
@@ -299,5 +358,21 @@ void uiFunctions::_cacheProcessing() {
         ImGui::Text("Progress %.1f%%", _appData->cacheProcessingStatus.processedPercentage);
 
         ImGui::End();
+    }
+}
+
+void uiFunctions::_uiPoseSelect() {
+    if (ImGui::BeginCombo("Pose select", currentPoseStr.c_str())) {
+
+        for (auto &[name, pos, rot] : _compiledPoses) {
+            if (ImGui::Selectable(name.data())) {
+                currentPoseStr = name;
+                _sceneDataPtr->cameraPosition = pos;
+                _appData->cameraRotation = rot;
+                _appData->updatePosition = true;
+            }
+        }
+
+        ImGui::EndCombo();
     }
 }

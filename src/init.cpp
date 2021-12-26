@@ -216,6 +216,9 @@ void mb::init::_windowTitleFps() {
 }
 
 void mb::init::_updateSceneData() {
+    if (_appData.updatePosition) {
+        _camera.SetPosition(_sceneData.cameraPosition);
+    }
     _sceneData.cameraPosition = _camera.GetPosition();
     _sceneData.fov = _camera.GetFov();
     _sceneData.cameraLookDir = _camera.GetLookDir();
@@ -273,8 +276,9 @@ void mb::init::_updateSceneData() {
 }
 
 void mb::init::_userInterface() {
-    _uiFunctions.doUi();
-
+    if (_appData.uiActive) {
+        _uiFunctions.doUi();
+    }
     _wKeyAction();
     _sKeyAction();
     _aKeyAction();
@@ -283,6 +287,7 @@ void mb::init::_userInterface() {
     _eKeyAction();
     _rKeyAction();
     _f11KeyAction();
+    _gKeyAction();
     _rightMouseButtonAction();
 }
 
@@ -378,6 +383,9 @@ void mb::init::_processEvents() {
                             break;
                         case SDLK_F11:
                             _appData.f11Key = value;
+                            break;
+                        case SDLK_g:
+                            _appData.gKey = value;
                     }
                     break;
                 }
@@ -498,9 +506,7 @@ void mb::init::_f11KeyAction() {
 void mb::init::_gKeyAction() {
     if (_appData.gKey) {
         _appData.gKey = false;
-//        bool isFullscreen = SDL_GetWindowFlags(_mainWindow) & SDL_WINDOW_FULLSCREEN;
-//        SDL_SetWindowFullscreen(_mainWindow, isFullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
-
+        _appData.uiActive = !_appData.uiActive;
     }
 }
 

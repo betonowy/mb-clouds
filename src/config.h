@@ -30,7 +30,7 @@ namespace filePaths {
     static constexpr const char* GLSL_VDB_SSNC = "../res/shaders/vdb/final/SSNC.frag";
     static constexpr const char* GLSL_VDB_SSLC = "../res/shaders/vdb/final/SSLC.frag";
     static constexpr const char* GLSL_VDB_SSNBF = "../res/shaders/vdb/final/SSNBF.frag";
-    static constexpr const char* GLSL_VDB_SSLBF = "../res/shaders/vdb/final/SSLC.frag";
+    static constexpr const char* GLSL_VDB_SSLBF = "../res/shaders/vdb/final/SSLBF.frag";
     static constexpr const char* GLSL_VDB_MSNC = "../res/shaders/vdb/final/MSNC.frag";
     static constexpr const char* GLSL_VDB_MSLC = "../res/shaders/vdb/final/MSLC.frag";
 

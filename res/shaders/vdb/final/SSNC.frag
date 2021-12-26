@@ -83,9 +83,17 @@ layout(std140, binding = 4) uniform SceneData {
 
     vec4 ms_samplePoints[256];
 
-    mat4 ms_mainRotation;
+    float ms_integral_mult;
+    float ms_intensity_mult;
+    float ms_distance_pow;
+    float ms_lorenz_mie_mult;
 
-    mat4 ms_rotations[64];
+    float ss_integral_mult;
+    float ss_intensity_mult;
+    float ss_unused_1;
+    float ss_lorenz_mie_mult;
+
+    vec4 ms_cloud_ambient_col;
 
 } u_SceneData;
 
@@ -718,14 +726,14 @@ float SecondaryRay(in vec3 ro, in float localDensity, in float phaseFunc, in flo
     }
 
     integral += firstIntegral;
-    integral *= u_SceneData.densityMultiplier;
+    integral *= u_SceneData.densityMultiplier * u_SceneData.ss_integral_mult;
 
-    float depthParam = 1 / (integral * 1);
+    float depthParam = 10 / (integral * 1);
 
     float scatter = mix(0.008, 1.0, smoothstep(0.96, 0.0, 0.4));
     float beersLaw = exp(-stepL * integral) + 0.5 * scatter * exp(-0.1 * stepL * integral) + scatter * 0.4 * exp(-0.02 * stepL * integral);
 
-    float light = beersLaw * phaseFunc * mix(0.05 + 1.5 * pow(min(1.0, localDensity * 8.5), 0.3 + 5.5 * cloudHeight), 1.0, clamp(integral * 0.4, 0.0, 1.0));
+    float light = beersLaw * 0.5 * mix(0.05 + 1.5 * pow(min(1.0, localDensity * 8.5), 0.3 + 5.5 * cloudHeight), 1.0, clamp(integral * 0.4, 0.0, 1.0));
     return LorenzMie(dotVal, depthParam) * 1 + light;
     //    return light;
 }
@@ -744,16 +752,16 @@ float MultiscatterRay(in vec3 ro, in float localDensity, in float distance, in f
     }
 
     integral += firstIntegral;
-    integral += distance * (localDensity + value.density) * 0.5;
-    integral *= u_SceneData.densityMultiplier;
+    integral += pow(distance, 2.0) * (localDensity + value.density) * 0.5;
+    integral *= u_SceneData.densityMultiplier * u_SceneData.ms_integral_mult;
 
-    float depthParam = 1 / (integral * 1);
+    float depthParam = 10 / (integral * 1);
 
     float scatter = mix(0.008, 1.0, smoothstep(0.96, 0.0, 0.4));
     float beersLaw = exp(-stepL * integral) + 0.5 * scatter * exp(-0.1 * stepL * integral) + scatter * 0.4 * exp(-0.02 * stepL * integral);
 
     float light = beersLaw * phaseFunc * mix(0.05 + 1.5 * pow(min(1.0, localDensity * 8.5), 0.3 + 5.5 * cloudHeight), 1.0, clamp(integral * 0.4, 0.0, 1.0));
-    return LorenzMie(dotVal, depthParam) * 1 + light;
+    return LorenzMie(dotVal, depthParam) * u_SceneData.ms_lorenz_mie_mult + light;
 }
 
 // *************************************************** begin multiscattering
@@ -771,9 +779,6 @@ float MultiScattering(in vec3 ro, in float localDensity, in float phaseFunc, in 
     const float radius = u_SceneData.ms_cloudRadius;
     float ss_Sum = 0;
 
-    // main single scattering influence
-    ss_Sum += SecondaryRay(ro, localDensity, phaseFunc, dotVal, cloudHeight);
-
     if (skip == 32){ return ss_Sum; }
 
     float ms_Sum = 0;
@@ -786,9 +791,9 @@ float MultiScattering(in vec3 ro, in float localDensity, in float phaseFunc, in 
         // isotropic
         ms_Sum += MultiscatterRay(samplePoint, localDensity, length(ro - samplePoint), phaseFunc, dotVal, cloudHeight);
         // fitted lorenz mie
-        //        ms_Sum += MultiscatterRay(samplePoint, localDensity, length(ro - samplePoint), phaseFunc, dotVal, cloudHeight) * FittedLorenzMie(dot(-normalize(ro - samplePoint), u_SceneData.sunDir)) * 3.1415;
+        //                ms_Sum += MultiscatterRay(samplePoint, localDensity, length(ro - samplePoint), phaseFunc, dotVal, cloudHeight) * FittedLorenzMie(dot(-normalize(ro - samplePoint), u_SceneData.sunDir)) * 3.1415;
         // simpler lorenz mie
-        //        ms_Sum += MultiscatterRay(samplePoint, localDensity, length(ro - samplePoint), phaseFunc, dotVal, cloudHeight) * LorenzMie(dot(-normalize(ro - samplePoint), u_SceneData.sunDir), 5) * 31.415;
+        //                ms_Sum += MultiscatterRay(samplePoint, localDensity, length(ro - samplePoint), phaseFunc, dotVal, cloudHeight) * LorenzMie(dot(-normalize(ro - samplePoint), u_SceneData.sunDir), 5) * 31.415;
         pointsCount += 1;
     }
 
@@ -842,11 +847,47 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
 
     vec4 accumulatedColor = vec4(0);
 
+    // get adaptive sample value (noisiness) tiled
+    float value = SampleAdaptiveLayer((ivec2(gl_FragCoord) / 16) * 16);
+    // get adaptive sample value (noisiness) untiled
+    //    float value = SampleAdaptiveLayer(ivec2(gl_FragCoord));
+
+    float stepMultiplier = 1;
+
+    //    if (value > 0.8) {
+    //        stepMultiplier *= 0.2;
+    //    }
+    //
+    //    if (value > 0.9) {
+    //        stepMultiplier *= 0.2;
+    //    }
+    //
+    //    if (value > 0.95) {
+    //        stepMultiplier *= 0.2;
+    //    }
+
+    // first ray has random length (monte carlo sampling)
+    {
+        const float rayLength = SampleBlueNoise(ivec2(gl_FragCoord)).x * u_SceneData.primaryRayLength;
+        float value = VDB_GetVoxelAcc(ro).density;
+        RayAdvance(ro, rd, rayLength);
+    }
+
+    // precalculate values
+
     const float rayDot = dot(u_SceneData.sunDir, rd);
+    //    const float phaseFunc = sqrt(FittedLorenzMie(rayDot));
+    //    const float phaseFunc = 1.0;
     const float phaseFunc = HenyeyGreenstein(0.0, rayDot);
     float step = u_SceneData.primaryRayLength;
 
+    float accAlpha = 0.0;
+    float prevValue = 0.0;
     float T = 1.0;
+
+    const float alphaThreshold = 0.05;
+    float baseIntegral = 0.0;
+    const float albedo = 0.01;
 
     vec3 color = vec3(0);
 
@@ -855,64 +896,44 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
     float stepLength = u_SceneData.primaryRayLength;
     const float ar = 1.00;
 
-    // first ray has random length (monte carlo sampling)
-    {
-        const float rayLength = SampleBlueNoise(ivec2(gl_FragCoord)).x * u_SceneData.primaryRayLength;
-        float localDensity = VDB_GetVoxelAcc(ro).density;
-
-        float cloudHeight = u_SceneData.cloudHeight + ro.z * u_SceneData.cloudHeightSensitivity;
-
-        if (localDensity > 0.0f) {
-            float intensity = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
-            intensity *= u_SceneData.radianceMultiplier;
-
-            vec3 ambient = (0.5 + 0.6 * cloudHeight) * vec3(0.2, 0.5, 1.0) * 6.5 + vec3(0.8) * max(0.0, 1.0 - 2.0 * cloudHeight);
-            ambient *= u_SceneData.ambientMultiplier;
-
-            vec3 radiance = ambient + intensity * u_SceneData.sunColor * u_SceneData.sunPower;
-
-            color += T * (radiance - radiance * exp(-localDensity * step));
-
-            T *= exp(-localDensity * step);
-
-            step = u_SceneData.primaryRayLength / T;
-        }
-
-        RayAdvance(ro, rd, rayLength);
-    }
-
     while (InsideAABB(ro)) {
         float localDensity = VDB_GetVoxelAcc(ro).density;
 
-        float cloudHeight = u_SceneData.cloudHeight + ro.z * u_SceneData.cloudHeightSensitivity;
+        float cloudHeight = (u_SceneData.cloudHeight + ro.z) * u_SceneData.cloudHeightSensitivity;
+        cloudHeight = min(max(0.0, cloudHeight + 0.5), 1.0);
 
         if (localDensity > 0.0f) {
-            float intensity = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
-            intensity *= u_SceneData.radianceMultiplier;
+            //            float intensity = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
+            //            float intensityMS = MultiScattering(ro, localDensity, phaseFunc, rayDot, cloudHeight);
+            float intensitySS = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
+            intensitySS *= u_SceneData.radianceMultiplier;
+            //            intensityMS *= u_SceneData.radianceMultiplier;
 
-            vec3 ambient = (0.5 + 0.6 * cloudHeight) * vec3(0.2, 0.5, 1.0) * 6.5 + vec3(0.8) * max(0.0, 1.0 - 2.0 * cloudHeight);
-            ambient *= u_SceneData.ambientMultiplier;
+            vec3 ambient = (0.5 + 0.6 * cloudHeight) * vec3(0.3, 0.3, 0.8) * 6.5 + vec3(0.8) * max(0.0, 1.0 - 2.0 * cloudHeight);
+            //            vec3 colCHigh = u_SceneData.sunColor;
+            vec3 colCLow = vec3(0.35, 0.3, 1.3) * 1.1;
 
-            vec3 radiance = ambient + intensity * u_SceneData.sunColor * u_SceneData.sunPower;
+            float factor = clamp(1.0, 0.0, intensitySS * 4.5);
 
+            vec3 colorMS = (1.0 - intensitySS) * colCLow + (intensitySS) * colCLow;
+            vec3 colorSS = u_SceneData.sunColor * factor + colCLow * (1.0 - factor);
+
+            vec3 radiance = /*colorMS * intensityMS * u_SceneData.ms_intensity_mult + */intensitySS * colorSS * u_SceneData.ss_intensity_mult;
             color += T * (radiance - radiance * exp(-localDensity * step));
 
             T *= exp(-localDensity * step);
 
-            step = u_SceneData.primaryRayLength / T;
-
-            if (T < 0.05) {
-                break;
+            if (T < alphaThreshold) {
+                return vec4(color, 1);
             }
         }
 
         RayAdvance(ro, rd, step);
     }
 
-    T = MapValue(0.05, 1.0, 0.0, 1.0, T);
-    T = clamp(1.0, 0.0, T);
+    T = MapValue(alphaThreshold, 1.0, 0.0, 1.0, T);
 
-    return vec4(color, 1 - T);
+    return vec4(color, 1 - clamp(1.0, 0.0, T));
 }
 
 // *************************************************** end ray marching primary ray
