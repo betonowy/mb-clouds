@@ -98,6 +98,8 @@ namespace mb {
 
         void _gKeyAction();
 
+        void _fKeyAction();
+
         void _rightMouseButtonAction();
 
         // constants

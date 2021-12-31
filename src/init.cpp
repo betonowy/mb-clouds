@@ -288,10 +288,15 @@ void mb::init::_userInterface() {
     _rKeyAction();
     _f11KeyAction();
     _gKeyAction();
+    _fKeyAction();
     _rightMouseButtonAction();
 }
 
 void mb::init::_render() {
+    if (_appData.pipelineFreeze) {
+        return;
+    }
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
@@ -386,6 +391,9 @@ void mb::init::_processEvents() {
                             break;
                         case SDLK_g:
                             _appData.gKey = value;
+                            break;
+                        case SDLK_f:
+                            _appData.fKey = value;
                     }
                     break;
                 }
@@ -507,6 +515,13 @@ void mb::init::_gKeyAction() {
     if (_appData.gKey) {
         _appData.gKey = false;
         _appData.uiActive = !_appData.uiActive;
+    }
+}
+
+void mb::init::_fKeyAction() {
+    if (_appData.fKey) {
+        _appData.fKey = false;
+        _appData.pipelineFreeze = !_appData.pipelineFreeze;
     }
 }
 

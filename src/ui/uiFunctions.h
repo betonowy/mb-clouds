@@ -87,10 +87,13 @@ struct applicationData {
     bool eKey{};
     bool rKey{};
     bool gKey{};
+    bool fKey{};
 
     bool f11Key{};
 
     bool uiActive{true};
+
+    bool pipelineFreeze{false};
 
     bool updatePosition{false};
 };
