@@ -13,6 +13,6 @@
 SingleScatteringNearestCached::SingleScatteringNearestCached()
         : Pipeline({std::make_shared<BackgroundPass>("fbBackgroundColor"),
                     std::make_shared<CloudPassSSNC>("fbCloudColor"),
-                    std::make_shared<BlurHorizontalPass>("fbCloudColor", "fbBlurX"),
-                    std::make_shared<BlurVerticalPass>("fbBlurX", "fbBlurY"),
-                    std::make_shared<PostPass>("fbBackgroundColor", "fbBlurY")}) {}
+                    std::make_shared<PostPass>("fbBackgroundColor", "fbCloudColor", "fbPostColor"),
+                    std::make_shared<BlurHorizontalPass>("fbPostColor", "fbBlurX"),
+                    std::make_shared<BlurVerticalPass>("fbBlurX")}) {}

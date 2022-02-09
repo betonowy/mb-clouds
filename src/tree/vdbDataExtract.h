@@ -88,6 +88,35 @@ public:
         sourceNodeDataType data;
     };
 
+    struct WithPadding {
+        WithPadding &operator=(const sourceLeafDataType &in) {
+            data = in;
+            return *this;
+        }
+
+        WithPadding &operator=(sourceLeafDataType &&in) {
+            data = std::move(in);
+            return *this;
+        }
+
+        sourceLeafDataType data;
+        uint32_t _padding_2[1024];
+    };
+
+    struct WithoutPadding {
+        WithoutPadding &operator=(const sourceLeafDataType &in) {
+            data = in;
+            return *this;
+        }
+
+        WithoutPadding &operator=(sourceLeafDataType &&in) {
+            data = std::move(in);
+            return *this;
+        }
+
+        sourceLeafDataType data;
+    };
+
     struct LeafDescription {
         static constexpr int topLevel = leafLevel;
 
@@ -103,9 +132,7 @@ public:
         dimType highDimBB{};
         uint32_t _padding_1{};
 
-        sourceLeafDataType data;
-
-        uint32_t _padding_2[1024];
+        std::conditional_t<std::is_same_v<valueType, float>, WithoutPadding, WithPadding> data;
     };
 
     // types end

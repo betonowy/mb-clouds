@@ -749,7 +749,7 @@ float SecondaryRay(in vec3 ro, in float localDensity, in float phaseFunc, in flo
 
     float depthParam = 10 / (integral * 1);
 
-    float scatter = mix(0.008, 1.0, smoothstep(0.96, 0.0, 0.4));
+    float scatter = 0.626;
     float beersLaw = exp(-stepL * integral) + 0.5 * scatter * exp(-0.1 * stepL * integral) + scatter * 0.4 * exp(-0.02 * stepL * integral);
 
     float light = beersLaw * 0.5 * mix(0.05 + 1.5 * pow(min(1.0, localDensity * 8.5), 0.3 + 5.5 * cloudHeight), 1.0, clamp(integral * 0.4, 0.0, 1.0));
@@ -776,7 +776,7 @@ float MultiscatterRay(in vec3 ro, in float localDensity, in float distance, in f
 
     float depthParam = 10 / (integral * 1);
 
-    float scatter = mix(0.008, 1.0, smoothstep(0.96, 0.0, 0.4));
+    float scatter = 0.626f;
     float beersLaw = exp(-stepL * integral) + 0.5 * scatter * exp(-0.1 * stepL * integral) + scatter * 0.4 * exp(-0.02 * stepL * integral);
 
     float light = beersLaw * phaseFunc * mix(0.05 + 1.5 * pow(min(1.0, localDensity * 8.5), 0.3 + 5.5 * cloudHeight), 1.0, clamp(integral * 0.4, 0.0, 1.0));
@@ -856,34 +856,18 @@ float Extinction(float integral) {
 }
 
 vec4 RayMarching(in vec3 ro, in vec3 rd) {
-    const float distAABB = GetDistAABB(ro, rd);// calculate hit distance for AABB domain
+    const float distAABB = GetDistAABB(ro, rd); // calculate hit distance for AABB domain
 
     if (distAABB > 0.0f) { // outside -> jump to AABB boundary
         RayAdvance(ro, rd, distAABB);
     } else if (distAABB < 0.0f) { // no hit -> bailing out
         return vec4(0, 0, 0, 0);
-    }// if inside -> don't do anything
+    } // if inside -> don't do anything
 
     vec4 accumulatedColor = vec4(0);
 
-    // get adaptive sample value (noisiness) tiled
     float value = SampleAdaptiveLayer((ivec2(gl_FragCoord) / 16) * 16);
-    // get adaptive sample value (noisiness) untiled
-    //    float value = SampleAdaptiveLayer(ivec2(gl_FragCoord));
-
     float stepMultiplier = 1;
-
-    //    if (value > 0.8) {
-    //        stepMultiplier *= 0.2;
-    //    }
-    //
-    //    if (value > 0.9) {
-    //        stepMultiplier *= 0.2;
-    //    }
-    //
-    //    if (value > 0.95) {
-    //        stepMultiplier *= 0.2;
-    //    }
 
     // first ray has random length (monte carlo sampling)
     {
@@ -893,10 +877,7 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
     }
 
     // precalculate values
-
     const float rayDot = dot(u_SceneData.sunDir, rd);
-    //    const float phaseFunc = sqrt(FittedLorenzMie(rayDot));
-    //    const float phaseFunc = 1.0;
     const float phaseFunc = HenyeyGreenstein(0.0, rayDot);
     float step = u_SceneData.primaryRayLength;
 
@@ -922,14 +903,10 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
         cloudHeight = min(max(0.0, cloudHeight + 0.5), 1.0);
 
         if (localDensity > 0.0f) {
-            //            float intensity = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
-//            float intensityMS = MultiScattering(ro, localDensity, phaseFunc, rayDot, cloudHeight);
             float intensitySS = SecondaryRay(ro, localDensity, phaseFunc, rayDot, cloudHeight);
             intensitySS *= u_SceneData.radianceMultiplier;
-//            intensityMS *= u_SceneData.radianceMultiplier;
 
             vec3 ambient = (0.5 + 0.6 * cloudHeight) * vec3(0.3, 0.3, 0.8) * 6.5 + vec3(0.8) * max(0.0, 1.0 - 2.0 * cloudHeight);
-//            vec3 colCHigh = u_SceneData.sunColor;
             vec3 colCLow = vec3(0.35, 0.3, 1.3) * 1.1;
 
             float factor = clamp(1.0, 0.0, intensitySS * 4.5);
@@ -937,7 +914,7 @@ vec4 RayMarching(in vec3 ro, in vec3 rd) {
             vec3 colorMS = (1.0 - intensitySS) * colCLow + (intensitySS) * colCLow;
             vec3 colorSS = u_SceneData.sunColor * factor + colCLow * (1.0 - factor);
 
-            vec3 radiance = /*colorMS * intensityMS * u_SceneData.ms_intensity_mult + */intensitySS * colorSS * u_SceneData.ss_intensity_mult;
+            vec3 radiance = intensitySS * colorSS * u_SceneData.ss_intensity_mult;
             color += T * (radiance - radiance * exp(-localDensity * step));
 
             T *= exp(-localDensity * step);

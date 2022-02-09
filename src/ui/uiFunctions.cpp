@@ -161,7 +161,8 @@ void uiFunctions::_uiSceneDataWindow() {
             ImGui::EndCombo();
         }
 
-        ImGui::Text("Cloud memory size: %f MiB", _vdbCloudsPtr->getMemorySize() / 1024. / 1024.);
+        ImGui::Text("Cached memory size: %f MiB", _vdbCloudsPtr->getMemorySize() / 1024. / 1024.);
+        ImGui::Text("Original memory size: %f MiB", _vdbCloudsPtr->getOriginalMemorySize() / 1024. / 1024.);
 
         if (ImGui::BeginCombo("Current shader", currentPipelineStr.c_str())) {
 

@@ -73,6 +73,9 @@ void vdbClouds::_initDataset() {
             ++valueIter;
         }
 
+        std::cout << "Dataset size: " << _dataset->countMemorySize() << '\n';
+        std::cout << "Cached size: " << _cachedDataset->countMemorySize() << '\n';
+
         file.close();
 
         openvdb::uninitialize();
@@ -96,6 +99,7 @@ void vdbClouds::_initCloudStorage() {
     std::cout << "Extracting GPU usable data from dataset\n";
 
     cachedGlType extract(*_cachedDataset);
+    vdbGlType originalExtract(*_dataset);
 
     std::cout << "Creating data structures on GPU\n";
 
@@ -104,6 +108,12 @@ void vdbClouds::_initCloudStorage() {
             extract.getLeavesSize() +
             extract.getRootsSize() +
             extract.getDescriptionSize();
+
+    _rawMemorySize =
+            originalExtract.getNodesSize() +
+            originalExtract.getLeavesSize() +
+            originalExtract.getRootsSize() +
+            originalExtract.getDescriptionSize();
 
     _cachedCloudStorage = std::make_unique<cachedCloudStorageType>(extract);
 }

@@ -50,6 +50,8 @@ public:
 
     inline std::size_t getMemorySize() { return _memorySize; }
 
+    inline std::size_t getOriginalMemorySize() { return _rawMemorySize; }
+
     void bind();
 
     integrationStatus getProcessingStatus();
@@ -96,6 +98,7 @@ private:
     std::vector<std::string> _availableVdbFiles;
 
     std::size_t _memorySize = 0;
+    std::size_t _rawMemorySize = 0;
 };
 
 
